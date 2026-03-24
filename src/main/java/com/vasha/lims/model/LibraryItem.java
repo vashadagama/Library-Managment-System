@@ -10,6 +10,7 @@ public abstract class LibraryItem {
     protected String title;
     protected String location;
     protected String isbn;
+    protected String language;
     protected String publisher;
     protected LocalDate publicationDate;
     protected LocalDate addedToLibarayDate;
