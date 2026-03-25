@@ -3,8 +3,7 @@ package main.java.com.vasha.lims.model;
 import java.time.LocalDate;
 import java.util.UUID;
 import main.java.com.vasha.lims.enums.ItemStatus;
-import static main.java.com.vasha.lims.util.ValidationUtil.checkNotBlank;
-import static main.java.com.vasha.lims.util.ValidationUtil.checkNotInFuture;
+import static main.java.com.vasha.lims.util.ValidationUtil.*;
 
 
 public abstract class LibraryItem {
@@ -15,14 +14,15 @@ public abstract class LibraryItem {
     private String language;
     private String publisher;
     private LocalDate publicationDate;
-    private LocalDate addedToLibaryDate;
-    private Integer avaibleCopies;
+    private LocalDate addedToLibraryDate;
+    private Integer availableCopies;
     private Integer totalCopies;
     private ItemStatus status;
 
 
 
-    public LibraryItem(String title, String publisher, LocalDate publicationDate, String isbn, String location, Integer totalCopies) {
+    public LibraryItem(String title, String publisher, LocalDate publicationDate,
+                       String isbn, String location, Integer totalCopies, String language) {
         setTitle(title);
         setPublisher(publisher);
         setPublicationDate(publicationDate);
@@ -30,11 +30,14 @@ public abstract class LibraryItem {
         setLocation(location);
         setLanguage(language);
         
-//copies  осталос, пока не понятно
+        if (totalCopies == null || totalCopies < 0) {
+            throw new IllegalArgumentException("Количество копий не может быть отрицательным!");
+        }
+
         this.totalCopies = totalCopies;
-        this.avaibleCopies = totalCopies;
+        this.availableCopies = totalCopies;
         this.status = ItemStatus.AVAILABLE;
-        this.addedToLibaryDate = LocalDate.now();
+        this.addedToLibraryDate = LocalDate.now();
         this.id = UUID.randomUUID(); 
 
     }
@@ -96,12 +99,12 @@ public abstract class LibraryItem {
     }
 
     public LocalDate getAddedToLibraryDate() {
-        return addedToLibaryDate;
+        return addedToLibraryDate;
     }
 
-    public void setAddedToLibaryDate(LocalDate addedToLibaryDate) {
-        checkNotInFuture(addedToLibaryDate, "Дата добавления в библиотеку");
-        this.addedToLibaryDate = addedToLibaryDate;
+    public void setaddedToLibraryDate(LocalDate addedToLibraryDate) {
+        checkNotInFuture(addedToLibraryDate, "Дата добавления в библиотеку");
+        this.addedToLibraryDate = addedToLibraryDate;
     }
 
 
@@ -111,34 +114,36 @@ public abstract class LibraryItem {
     }
 
     public void incrementTotalCopies() {
-            this.avaibleCopies += 1;
+        this.totalCopies += 1;
+        this.availableCopies += 1;
     }
 
-    public void dicrementTotalCopies() {
-        if (totalCopies - 1 >= 0){
-            this.avaibleCopies -= 1;
+    public void decrementTotalCopies() {
+        if (totalCopies > 0 && availableCopies > 0) {
+            this.totalCopies -= 1;
+            this.availableCopies -= 1;
         } else {
-            throw new IllegalArgumentException("Количество копий не может быть меньше нуля!");
+            throw new IllegalArgumentException("Невозможно списать книгу: доступных копий нет или фонд пуст.");
         }
     }
 
-    public Integer getAvaibleCopies() {
-        return avaibleCopies;
+    public Integer getavailableCopies() {
+        return availableCopies;
     }
 
-    public void incrementAvaibleCopies() {
-        if (avaibleCopies + 1 <= totalCopies){
-            this.avaibleCopies += 1;
+    public void incrementavailableCopies() {
+        if (availableCopies < totalCopies) {
+            this.availableCopies += 1;
         } else {
             throw new IllegalArgumentException("Количество доступных копий не может превышать общее количество копий!");
         }
     }
 
-    public void dicrementAvaibleCopies() {
-        if (avaibleCopies - 1 >= 0){
-            this.avaibleCopies -= 1;
+    public void decrementavailableCopies() {
+        if (availableCopies > 0) {
+            this.availableCopies -= 1;
         } else {
-            throw new IllegalArgumentException("Количество доступных копий не может быть меньше нуля!");
+            throw new IllegalArgumentException("Нет доступных копий для выдачи!");
         }
     }
 
@@ -146,10 +151,31 @@ public abstract class LibraryItem {
         return status;
     }
 
-    public void setItemStatus(ItemStatus status) {
-        //??? какая тут нужна проверка?
+    public void setStatus(ItemStatus status) {
+        checkNotNull(status, "Статус предмета");
+        this.status = status;
     }
 
+    public abstract String getItemType();
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+
+        LibraryItem item = (LibraryItem) object;
+
+        return id != null && id.equals(item.id);
+
+    }
+
+    @Override
+    public int hashCode() {
+        if (id != null) {
+            return id.hashCode();
+        }
+        return 0;
+    }
     
 
 }
