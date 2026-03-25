@@ -1,9 +1,9 @@
 package main.java.com.vasha.lims.model;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import main.java.com.vasha.lims.enums.BookGenre;
-import main.java.com.vasha.lims.model.Author;
 
 
 public class Book extends LibraryItem {
@@ -26,5 +26,8 @@ public class Book extends LibraryItem {
         this.edition = 1;
     }
 
+    public Book() {}
+
+    
 }
 

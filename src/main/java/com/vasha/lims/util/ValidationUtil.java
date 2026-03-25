@@ -1,15 +1,24 @@
 package main.java.com.vasha.lims.util;
 
+import java.time.LocalDate;
+
+
 public class ValidationUtil {
     public static void checkNotBlank(String value, String fieldName) {
-        if (value == null || value.trim().isEmpty()){
+        if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(fieldName + " не может быть пустым!");
         }
     }
 
-    public static void checkNotNull(Object value, String fieldName){
+    public static void checkNotNull(Object value, String fieldName) {
         if (value == null) {
             throw new IllegalArgumentException(fieldName + " не может быть null!");
+        }
+    }
+
+    public static void checkNotInFuture(LocalDate date, String fieldName) {
+        if (!date.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException(fieldName + " не может быть в будущем!");
         }
     }
 }

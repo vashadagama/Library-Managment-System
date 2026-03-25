@@ -1,10 +1,10 @@
 package main.java.com.vasha.lims.model;
 
+import java.time.LocalDate;
+import java.util.UUID;
 import main.java.com.vasha.lims.enums.UserRole;
 import main.java.com.vasha.lims.enums.UserStatus;
 import static main.java.com.vasha.lims.util.ValidationUtil.*;
-import java.time.LocalDate;
-import java.util.UUID;
 
 
 public class User {
@@ -19,11 +19,12 @@ public class User {
 
 
     public User(String fullName, String email, UserRole role, String libraryCardNumber) {
+        setFullName(fullName);
+        setLibraryCardNumber(libraryCardNumber);
+        setEmail(email);
+        setRole(role);
+
         this.id = UUID.randomUUID();
-        this.fullName = fullName;
-        this.email = email;
-        this.role = role;
-        this.libraryCardNumber = libraryCardNumber;
         this.registrationDate = LocalDate.now();
         this.status = UserStatus.ACTIVE;
     }
@@ -31,11 +32,12 @@ public class User {
     public User() {}
 
 
+
     public String getFullName() {
         return fullName;
     }
 
-    public void setFullName(String fullName) {
+    public final void setFullName(String fullName) {
         checkNotBlank(fullName, "ФИО");
         this.fullName = fullName;
     }
@@ -44,7 +46,7 @@ public class User {
         return email;
     }
 
-    public void setEmail() {
+    public final void setEmail(String email) {
         checkNotBlank(email, "Email");
         this.email = email;
     }
@@ -53,7 +55,7 @@ public class User {
         return phoneNumber;
     }
 
-    public void setPhoneNumber() {
+    public void setPhoneNumber(String phoneNumber) {
         checkNotBlank(phoneNumber, "Номер телефона");
         this.phoneNumber = phoneNumber;
     }
@@ -62,7 +64,7 @@ public class User {
         return libraryCardNumber;
     }
 
-    public void setLibraryCardNumber(){
+    public final void setLibraryCardNumber(String libraryCardNumber){
         checkNotBlank(libraryCardNumber, "Номер библиотекчного билета");
         this.libraryCardNumber = libraryCardNumber;
     }
@@ -71,7 +73,7 @@ public class User {
         return role;
     }
 
-    public void setRole() {
+    public final void setRole(UserRole role) {
         checkNotNull(role, "Роль");
         this.role = role;
     }
@@ -80,7 +82,7 @@ public class User {
         return status;
     }
 
-    public void setStatus() {
+    public void setStatus(UserStatus status) {
         checkNotNull(status, "Статус");
         this.status = status;
     }
@@ -92,6 +94,7 @@ public class User {
     public UUID getId() {
         return id;
     }
+
 
 
     @Override
@@ -107,7 +110,24 @@ public class User {
     }
 
     @Override
-    public int hashCose() {
-        return id != null ? id.hashCode() : 0;
+    public int hashCode() {
+        if (id != null) {
+            return id.hashCode();
+        }
+        return 0;
     }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", libraryCardNumber='" + libraryCardNumber + '\'' +
+                ", fullName='" + fullName + '\'' +
+                ", role=" + role + '\'' +
+                ", email=" + email + '\'' +
+                ", phoneNumber=" + phoneNumber + '\'' +
+                ", registrationDate=" + registrationDate + '\'' +
+                ", status=" + status +
+                '}';
+}
 }
