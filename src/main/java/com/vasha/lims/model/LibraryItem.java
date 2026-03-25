@@ -2,6 +2,8 @@ package main.java.com.vasha.lims.model;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 import main.java.com.vasha.lims.enums.ItemStatus;
 import static main.java.com.vasha.lims.util.ValidationUtil.*;
 
@@ -18,6 +20,7 @@ public abstract class LibraryItem {
     private Integer availableCopies;
     private Integer totalCopies;
     private ItemStatus status;
+    private List<Author> authors = new ArrayList<>();
 
 
 
@@ -102,7 +105,7 @@ public abstract class LibraryItem {
         return addedToLibraryDate;
     }
 
-    public void setaddedToLibraryDate(LocalDate addedToLibraryDate) {
+    public void setAddedToLibraryDate(LocalDate addedToLibraryDate) {
         checkNotInFuture(addedToLibraryDate, "Дата добавления в библиотеку");
         this.addedToLibraryDate = addedToLibraryDate;
     }
@@ -127,11 +130,11 @@ public abstract class LibraryItem {
         }
     }
 
-    public Integer getavailableCopies() {
+    public Integer getAvailableCopies() {
         return availableCopies;
     }
 
-    public void incrementavailableCopies() {
+    public void incrementAvailableCopies() {
         if (availableCopies < totalCopies) {
             this.availableCopies += 1;
         } else {
@@ -156,6 +159,21 @@ public abstract class LibraryItem {
         this.status = status;
     }
 
+    public UUID getId() {
+        return id;
+    }
+
+    public List<Author> getAuthors() {
+        return authors;
+    }
+
+    public void addAuthor(Author author) {
+        if (author != null && !this.authors.contains(author)) {
+            this.authors.add(author);
+            author.addWork(this);
+        }
+    }
+
     public abstract String getItemType();
 
     @Override
@@ -177,6 +195,20 @@ public abstract class LibraryItem {
         return 0;
     }
     
-
+    @Override
+    public String toString() {
+        return "Item{" +
+                "id=" + id +
+                ", title=" + title +  '\'' +
+                ", location=" + location + '\'' +
+                ", isbn=" + isbn + '\'' +
+                ", language=" + language + '\'' +
+                ", publisher=" + publisher + '\'' +
+                ", addedToLibraryDate=" + addedToLibraryDate + '\'' +
+                ", availableCopies=" + availableCopies + '\'' +
+                ", totalCopies=" + totalCopies + '\'' +
+                ", status=" + status +
+                '}';
+    }
 }
 

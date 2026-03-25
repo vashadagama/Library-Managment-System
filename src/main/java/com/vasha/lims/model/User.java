@@ -55,7 +55,7 @@ public class User {
         return phoneNumber;
     }
 
-    public void setPhoneNumber(String phoneNumber) {
+    public final void setPhoneNumber(String phoneNumber) {
         checkNotBlank(phoneNumber, "Номер телефона");
         this.phoneNumber = phoneNumber;
     }
