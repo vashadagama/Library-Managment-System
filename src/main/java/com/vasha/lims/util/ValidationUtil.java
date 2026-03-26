@@ -17,7 +17,7 @@ public class ValidationUtil {
     }
 
     public static void checkNotInFuture(LocalDate date, String fieldName) {
-        if (!date.isAfter(LocalDate.now())) {
+        if (date != null && date.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException(fieldName + " не может быть в будущем!");
         }
     }

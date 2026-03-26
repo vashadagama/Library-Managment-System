@@ -11,14 +11,12 @@ public class Author {
     private String firstName;
     private String lastName;
     private LocalDate birthDate;
-    private List<LibraryItem> works;
-
-
+    private List<LibraryItem> works = new ArrayList<>();
 
     public Author(String firstName, String lastName, LocalDate birthDate) {
         setFirstName(firstName);
         setLastName(lastName);
-
+        setBirthDate(birthDate);
 
         this.id = UUID.randomUUID();
     }
@@ -47,6 +45,62 @@ public class Author {
 
     public String getFullName() {
         return firstName + " " + lastName;
+    }
+
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public final void setBirthDate(LocalDate birthDate) {
+        if (birthDate != null) {
+            checkNotInFuture(birthDate, "Дата рождения автора");
+        }
+        this.birthDate = birthDate;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public List<LibraryItem> getWorks() {
+        return works;
+    }
+
+    public void addWork(LibraryItem work) {
+        if (work != null && !this.works.contains(work)) {
+            this.works.add(work);
+            work.addAuthor(this);
+        }
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+
+        Author author = (Author) object;
+
+        return id != null && id.equals(author.id);
+
+    }
+
+    @Override
+    public int hashCode() {
+        if (id != null) {
+            return id.hashCode();
+        }
+        return 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Author{" +
+                "id=" + id +
+                ", firstName=" + firstName +  '\'' +
+                ", lastName=" + lastName + '\'' +
+                ", birthDate=" + birthDate + '\'' +
+                ", worksCount=" + works.size() + '\'' +
+                '}';
     }
 
 }

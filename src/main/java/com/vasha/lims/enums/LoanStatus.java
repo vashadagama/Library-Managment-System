@@ -3,6 +3,7 @@ package main.java.com.vasha.lims.enums;
 public enum LoanStatus {
     ACTIVE("Активна"),
     RETURNED("Возвращена"),
+    RENEWED("Продлена"),
     OVERDUE("Просрочена"),
     LOST("Утеряна");
 

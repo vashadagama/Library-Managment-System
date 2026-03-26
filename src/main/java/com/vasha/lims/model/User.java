@@ -6,7 +6,6 @@ import main.java.com.vasha.lims.enums.UserRole;
 import main.java.com.vasha.lims.enums.UserStatus;
 import static main.java.com.vasha.lims.util.ValidationUtil.*;
 
-
 public class User {
     private UUID id;
     private String libraryCardNumber;
@@ -16,7 +15,6 @@ public class User {
     private LocalDate registrationDate;
     private UserRole role;
     private UserStatus status;
-
 
     public User(String fullName, String email, UserRole role, String libraryCardNumber) {
         setFullName(fullName);
@@ -94,8 +92,6 @@ public class User {
     public UUID getId() {
         return id;
     }
-
-
 
     @Override
     public boolean equals(Object object) {

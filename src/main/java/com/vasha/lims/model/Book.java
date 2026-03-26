@@ -1,33 +1,64 @@
 package main.java.com.vasha.lims.model;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import main.java.com.vasha.lims.enums.BookGenre;
-
+import static main.java.com.vasha.lims.util.ValidationUtil.*;
 
 public class Book extends LibraryItem {
-    private List<Author> authors;
+
     private BookGenre genre;
     private Integer pageCount;
-    private Integer edition;
-    private String series;
-
 
     public Book(String title, String publisher, LocalDate publicationDate,
-                String isbn, String location, int totalCopies,
-                BookGenre genre, int pageCount, String language) {
+                String isbn, String location, Integer totalCopies,
+                String language, BookGenre genre, Integer pageCount) {
 
-        super(title, publisher, publicationDate, isbn, location, totalCopies);
-        this.authors = new ArrayList<>();
-        this.genre = genre;
-        this.pageCount = pageCount;
-        this.language = language;
-        this.edition = 1;
+        super(title, publisher, publicationDate,
+                isbn, location, totalCopies, language);
+
+        setGenre(genre);
+        setPageCount(pageCount);
+
+
     }
 
     public Book() {}
 
-    
+
+
+    public BookGenre getGenre() {
+        return genre;
+    }
+
+    public final void setGenre(BookGenre genre) {
+        checkNotNull(genre, "Жанр");
+        this.genre = genre;
+    }
+
+    public Integer getPageCount() {
+        return pageCount;
+    }
+
+    public final void setPageCount(Integer pageCount) {
+        if (pageCount == null || pageCount <= 0) {
+            throw new IllegalArgumentException(pageCount + " - Невозможное число страниц");
+        }
+        this.pageCount = pageCount;
+    }
+
+    @Override
+    public String getItemType() {
+        return "Книга";
+    }
+
+    @Override
+    public String toString() {
+        String base = super.toString();
+        return base.substring(0, base.length() - 1) +
+                ", genre=" + genre.getDisplayName() +
+                ", pageCount=" + pageCount +
+                "}";
+
+    }
 }
 

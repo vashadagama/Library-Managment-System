@@ -32,7 +32,7 @@ public abstract class LibraryItem {
         setIsbn(isbn);
         setLocation(location);
         setLanguage(language);
-        
+
         if (totalCopies == null || totalCopies < 0) {
             throw new IllegalArgumentException("Количество копий не может быть отрицательным!");
         }
@@ -41,11 +41,12 @@ public abstract class LibraryItem {
         this.availableCopies = totalCopies;
         this.status = ItemStatus.AVAILABLE;
         this.addedToLibraryDate = LocalDate.now();
-        this.id = UUID.randomUUID(); 
+        this.id = UUID.randomUUID();
 
     }
 
     public LibraryItem () {}
+
 
     public String getTitle() {
         return title;
@@ -105,23 +106,21 @@ public abstract class LibraryItem {
         return addedToLibraryDate;
     }
 
-    public void setAddedToLibraryDate(LocalDate addedToLibraryDate) {
+    public final void setAddedToLibraryDate(LocalDate addedToLibraryDate) {
         checkNotInFuture(addedToLibraryDate, "Дата добавления в библиотеку");
         this.addedToLibraryDate = addedToLibraryDate;
     }
-
-
 
     public Integer getTotalCopies() {
         return totalCopies;
     }
 
-    public void incrementTotalCopies() {
+    public final void incrementTotalCopies() {
         this.totalCopies += 1;
         this.availableCopies += 1;
     }
 
-    public void decrementTotalCopies() {
+    public final void decrementTotalCopies() {
         if (totalCopies > 0 && availableCopies > 0) {
             this.totalCopies -= 1;
             this.availableCopies -= 1;
@@ -134,7 +133,7 @@ public abstract class LibraryItem {
         return availableCopies;
     }
 
-    public void incrementAvailableCopies() {
+    public final void incrementAvailableCopies() {
         if (availableCopies < totalCopies) {
             this.availableCopies += 1;
         } else {
@@ -142,7 +141,7 @@ public abstract class LibraryItem {
         }
     }
 
-    public void decrementavailableCopies() {
+    public final void decrementAvailableCopies() {
         if (availableCopies > 0) {
             this.availableCopies -= 1;
         } else {
@@ -154,7 +153,7 @@ public abstract class LibraryItem {
         return status;
     }
 
-    public void setStatus(ItemStatus status) {
+    public final void setStatus(ItemStatus status) {
         checkNotNull(status, "Статус предмета");
         this.status = status;
     }
@@ -194,20 +193,21 @@ public abstract class LibraryItem {
         }
         return 0;
     }
-    
+
     @Override
     public String toString() {
-        return "Item{" +
+        return getItemType() + "{" +
                 "id=" + id +
-                ", title=" + title +  '\'' +
-                ", location=" + location + '\'' +
-                ", isbn=" + isbn + '\'' +
-                ", language=" + language + '\'' +
-                ", publisher=" + publisher + '\'' +
-                ", addedToLibraryDate=" + addedToLibraryDate + '\'' +
-                ", availableCopies=" + availableCopies + '\'' +
-                ", totalCopies=" + totalCopies + '\'' +
+                ", title='" + title + '\'' +
+                ", location='" + location + '\'' +
+                ", isbn='" + isbn + '\'' +
+                ", language='" + language + '\'' +
+                ", publisher='" + publisher + '\'' +
+                ", publicationDate=" + publicationDate +
+                ", addedDate=" + addedToLibraryDate +
+                ", copies=" + availableCopies + "/" + totalCopies +
                 ", status=" + status +
+                ", authorsCount=" + authors.size() +
                 '}';
     }
 }
