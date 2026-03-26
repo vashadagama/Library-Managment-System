@@ -9,7 +9,7 @@ import static main.java.com.vasha.lims.util.ValidationUtil.*;
 
 
 public abstract class LibraryItem {
-    private UUID id; // Соответсвует PRIMARY KEY in PSQL
+    private UUID id;
     private String title;
     private String location;
     private String isbn;
@@ -20,7 +20,7 @@ public abstract class LibraryItem {
     private Integer availableCopies;
     private Integer totalCopies;
     private ItemStatus status;
-    private List<Author> authors = new ArrayList<>();
+    private final List<Author> authors = new ArrayList<>();
 
 
 

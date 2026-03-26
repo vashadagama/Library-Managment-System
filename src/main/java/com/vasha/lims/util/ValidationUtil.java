@@ -21,4 +21,10 @@ public class ValidationUtil {
             throw new IllegalArgumentException(fieldName + " не может быть в будущем!");
         }
     }
+
+    public static void checkIsPositive(Integer number, String fieldName) {
+        if (number == null || number <= 0) {
+            throw new IllegalArgumentException("Поле " + fieldName + " должно быть положительным!");
+        }
+    }
 }

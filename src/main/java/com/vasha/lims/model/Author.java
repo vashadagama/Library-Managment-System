@@ -11,7 +11,7 @@ public class Author {
     private String firstName;
     private String lastName;
     private LocalDate birthDate;
-    private List<LibraryItem> works = new ArrayList<>();
+    private final List<LibraryItem> works = new ArrayList<>();
 
     public Author(String firstName, String lastName, LocalDate birthDate) {
         setFirstName(firstName);

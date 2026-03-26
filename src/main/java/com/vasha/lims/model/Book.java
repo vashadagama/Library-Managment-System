@@ -40,9 +40,7 @@ public class Book extends LibraryItem {
     }
 
     public final void setPageCount(Integer pageCount) {
-        if (pageCount == null || pageCount <= 0) {
-            throw new IllegalArgumentException(pageCount + " - Невозможное число страниц");
-        }
+        checkIsPositive(pageCount, "Число страниц");
         this.pageCount = pageCount;
     }
 
