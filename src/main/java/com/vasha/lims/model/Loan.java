@@ -34,6 +34,10 @@ public class Loan {
 
 
 
+    public LoanStatus getStatus(){
+        return status;
+    }
+
     public User getUser() {
         return user;
     }
@@ -41,6 +45,18 @@ public class Loan {
     public final void setUser(User user) {
         checkNotNull(user, "Читатель");
         this.user = user;
+    }
+
+    public LocalDate getReturnDate() {
+        return returnDate;
+    }
+
+    public LocalDate getLoanDate() {
+        return loanDate;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
     }
 
     public LibraryItem getItem() {

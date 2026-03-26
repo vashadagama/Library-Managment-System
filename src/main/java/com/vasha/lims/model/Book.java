@@ -40,7 +40,7 @@ public class Book extends LibraryItem {
     }
 
     public final void setPageCount(Integer pageCount) {
-        checkIsPositive(pageCount, "Число страниц");
+        checkIsPositive(pageCount, "");
         this.pageCount = pageCount;
     }
 
