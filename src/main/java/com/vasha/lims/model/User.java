@@ -9,15 +9,19 @@ import static main.java.com.vasha.lims.util.ValidationUtil.*;
 public class User {
     private UUID id;
     private String libraryCardNumber;
-    private String fullName;
+    private String firstName;
+    private String lastName;
+    private String patronimyc;
     private String email;
     private String phoneNumber;
     private LocalDate registrationDate;
     private UserRole role;
     private UserStatus status;
 
-    public User(String fullName, String email, UserRole role, String libraryCardNumber) {
-        setFullName(fullName);
+    public User(String firstName, String lastName, String patronimic, String email, UserRole role, String libraryCardNumber) {
+        setFirstName(firstName);
+        setLastName(lastName);
+        setPatronimyc(patronimyc);
         setLibraryCardNumber(libraryCardNumber);
         setEmail(email);
         setRole(role);
@@ -29,15 +33,37 @@ public class User {
 
     public User() {}
 
-
+    
 
     public String getFullName() {
-        return fullName;
+        return firstName + " " + lastName + " " + patronimyc;
     }
 
-    public final void setFullName(String fullName) {
-        checkNotBlank(fullName, "ФИО");
-        this.fullName = fullName;
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public final void setFirstName(String firstName) {
+        checkNotBlank(firstName, "Имя");
+        this.firstName = firstName;
+    }
+
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public final void setLastName(String lastName) {
+        checkNotBlank(lastName, "Фамилия");
+        this.lastName = lastName;
+    }
+
+    public String getPatronimyc() {
+        return patronimyc;
+    }
+
+    public final void setPatronimyc(String patronimyc) {
+        this.patronimyc = patronimyc;
     }
 
     public String getEmail() {
@@ -118,7 +144,9 @@ public class User {
         return "User{" +
                 "id=" + id +
                 ", libraryCardNumber='" + libraryCardNumber + '\'' +
-                ", fullName='" + fullName + '\'' +
+                ", fisrtName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", patronymic='" + patronimyc + '\'' +
                 ", role=" + role + '\'' +
                 ", email=" + email + '\'' +
                 ", phoneNumber=" + phoneNumber + '\'' +

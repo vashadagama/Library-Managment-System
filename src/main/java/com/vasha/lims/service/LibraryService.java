@@ -58,13 +58,8 @@ public class LibraryService {
     public final void returnItem(UUID userId, UUID itemId) {
         checkNotNull(userId, "Id пользователя");
         User user = userRepo.findById(userId);
-        
-        if (user == null) {
-            throw new IllegalArgumentException("Пользователь не найден");
-        }
-        if (itemId == null) {
-            throw new IllegalArgumentException("Экземпляр не найден");
-        }
+        checkNotNull(user, "Пользователь");
+        checkNotNull(itemId, "Id экземпляра");
 
         for (Loan loan : loanRepo.findLoansByUser(user)){
             if (loan.getItem().getId().equals(itemId) &&

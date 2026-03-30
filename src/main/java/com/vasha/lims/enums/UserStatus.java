@@ -3,7 +3,8 @@ package main.java.com.vasha.lims.enums;
 public enum UserStatus {
     ACTIVE ("Может брать книги"),
     FROZEN ("Аккаунт заморожен"),
-    TERMINATED ("Удален/заблокирован");
+    BLOCKED ("Аккаунт заблокирован"),
+    DELITED ("Удален");
 
     private final String displayName;
 

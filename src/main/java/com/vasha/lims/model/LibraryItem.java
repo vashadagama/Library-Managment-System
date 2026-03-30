@@ -1,10 +1,9 @@
 package main.java.com.vasha.lims.model;
 
 import java.time.LocalDate;
-import java.util.UUID;
-import java.util.List;
 import java.util.ArrayList;
-import main.java.com.vasha.lims.enums.ItemStatus;
+import java.util.List;
+import java.util.UUID;
 import static main.java.com.vasha.lims.util.ValidationUtil.*;
 
 
@@ -17,15 +16,10 @@ public abstract class LibraryItem {
     private String publisher;
     private LocalDate publicationDate;
     private LocalDate addedToLibraryDate;
-    private Integer availableCopies;
-    private Integer totalCopies;
-    private ItemStatus status;
     private final List<Author> authors = new ArrayList<>();
 
-
-
     public LibraryItem(String title, String publisher, LocalDate publicationDate,
-                       String isbn, String location, Integer totalCopies, String language) {
+                       String isbn, String location, String language) {
         setTitle(title);
         setPublisher(publisher);
         setPublicationDate(publicationDate);
@@ -33,13 +27,6 @@ public abstract class LibraryItem {
         setLocation(location);
         setLanguage(language);
 
-        if (totalCopies == null || totalCopies < 0) {
-            throw new IllegalArgumentException("Количество копий не может быть отрицательным!");
-        }
-
-        this.totalCopies = totalCopies;
-        this.availableCopies = totalCopies;
-        this.status = ItemStatus.AVAILABLE;
         this.addedToLibraryDate = LocalDate.now();
         this.id = UUID.randomUUID();
 
@@ -111,53 +98,6 @@ public abstract class LibraryItem {
         this.addedToLibraryDate = addedToLibraryDate;
     }
 
-    public Integer getTotalCopies() {
-        return totalCopies;
-    }
-
-    public final void incrementTotalCopies() {
-        this.totalCopies += 1;
-        this.availableCopies += 1;
-    }
-
-    public final void decrementTotalCopies() {
-        if (totalCopies > 0 && availableCopies > 0) {
-            this.totalCopies -= 1;
-            this.availableCopies -= 1;
-        } else {
-            throw new IllegalArgumentException("Невозможно списать книгу: доступных копий нет или фонд пуст.");
-        }
-    }
-
-    public Integer getAvailableCopies() {
-        return availableCopies;
-    }
-
-    public final void incrementAvailableCopies() {
-        if (availableCopies < totalCopies) {
-            this.availableCopies += 1;
-        } else {
-            throw new IllegalArgumentException("Количество доступных копий не может превышать общее количество копий!");
-        }
-    }
-
-    public final void decrementAvailableCopies() {
-        if (availableCopies > 0) {
-            this.availableCopies -= 1;
-        } else {
-            throw new IllegalArgumentException("Нет доступных копий для выдачи!");
-        }
-    }
-
-    public ItemStatus getStatus() {
-        return status;
-    }
-
-    public final void setStatus(ItemStatus status) {
-        checkNotNull(status, "Статус предмета");
-        this.status = status;
-    }
-
     public UUID getId() {
         return id;
     }
@@ -205,8 +145,6 @@ public abstract class LibraryItem {
                 ", publisher='" + publisher + '\'' +
                 ", publicationDate=" + publicationDate +
                 ", addedDate=" + addedToLibraryDate +
-                ", copies=" + availableCopies + "/" + totalCopies +
-                ", status=" + status +
                 ", authorsCount=" + authors.size() +
                 '}';
     }
