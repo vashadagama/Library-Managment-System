@@ -19,7 +19,7 @@ public class UserService {
         if (userRepo.findByEmail(email) != null) {
             throw new IllegalStateException("Пользователь с таким Email уже существует!");
         }
-        if (userRepo.findByLibraryCardNumber(libraryCardNumber) == null) {
+        if (userRepo.findByLibraryCardNumber(libraryCardNumber) != null) {
             throw new IllegalStateException("Пользователь с таким Номером библиотечной карты уже сущестует!");
         }
 

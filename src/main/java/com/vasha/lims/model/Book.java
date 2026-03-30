@@ -10,11 +10,11 @@ public class Book extends LibraryItem {
     private Integer pageCount;
 
     public Book(String title, String publisher, LocalDate publicationDate,
-                String isbn, String location, Integer totalCopies,
+                String isbn, String location,
                 String language, BookGenre genre, Integer pageCount) {
 
         super(title, publisher, publicationDate,
-                isbn, location, totalCopies, language);
+                isbn, location, language);
 
         setGenre(genre);
         setPageCount(pageCount);

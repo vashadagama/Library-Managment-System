@@ -11,11 +11,11 @@ public class Magazine extends LibraryItem {
     private boolean hasGlossyCover;
 
     public Magazine(String title, String publisher, LocalDate publicationDate,
-                String isbn, String location, Integer totalCopies,
+                String isbn, String location,
                 String language, MagazineGenre genre, Integer pageCount, boolean hasGlossyCover) {
 
         super(title, publisher, publicationDate,
-                isbn, location, totalCopies, language);
+                isbn, location, language);
 
         setGenre(genre);
         setPageCount(pageCount);
