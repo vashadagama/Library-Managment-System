@@ -42,7 +42,7 @@ public class CopyRepository {
     public final List<ItemCopy> findByItem(LibraryItem item) {
         checkNotNull(item, "Список экземпляров");
         List<ItemCopy> itemCopies = new ArrayList<>()
-;        for (ItemCopy copy : copies) {
+        for (ItemCopy copy : copies) {
             if (copy.getItem().equals(item)) {
                 itemCopies.add(copy);
             }

@@ -8,21 +8,15 @@ import java.util.UUID;
 public class Loan {
     private UUID id;
     private User user;
-    private LibraryItem item;
     private LocalDate loanDate;
     private LocalDate dueDate;
     private LocalDate returnDate;
     private LoanStatus status;
+    private ItemCopy copy;
 
-    public Loan(User user, LibraryItem item) {
+    public Loan(User user, ItemCopy copy) {
         setUser(user);
-        setItem(item);
-
-        if (item.getAvailableCopies() <= 0) {
-            throw new IllegalArgumentException("Нет доступных для выдачи экземпляров " + item);
-        }
-
-        item.decrementAvailableCopies();
+        setCopy(copy);
 
         this.id = UUID.randomUUID();
         this.loanDate = LocalDate.now();
@@ -32,6 +26,10 @@ public class Loan {
 
     public Loan() {}
 
+//    Вместо этого меняй статус самого экземпляра: copy.setStatus(ItemStatus.LOANED);.
+//    В методе returnItem() в классе Loan делай то же самое при возврате: copy.setStatus(ItemStatus.AVAILABLE);.
+//    В LoanRepository:
+//    Везде, где ты искал совпадения по item, теперь нужно достучаться до item через copy. Например: loan.getCopy().getItem().equals(item).
 
 
     public LoanStatus getStatus(){
@@ -59,13 +57,13 @@ public class Loan {
         return dueDate;
     }
 
-    public LibraryItem getItem() {
-        return item;
+    public ItemCopy getCopy() {
+        return copy;
     }
 
-    public final void setItem(LibraryItem item) {
-        checkNotNull(item, "Экземпляр");
-        this.item = item;
+    public final void setCopy(ItemCopy copy) {
+        checkNotNull(copy, "Экземпляр");
+        this.copy = copy;
     }
 
     public final void returnItem() {
@@ -73,7 +71,7 @@ public class Loan {
 
         this.returnDate = LocalDate.now();
         this.status = LoanStatus.RETURNED;
-        item.incrementAvailableCopies();
+        copy.incrementAvailableCopies();
     }
 
     public final void renewLoan(Integer extraDays) {
@@ -106,7 +104,7 @@ public class Loan {
                 "Выдача [%s]: %s взял '%s'. Вернуть до: %s (Статус: %s)",
                 id.toString().substring(0, 8),
                 user.getFullName(),
-                item.getTitle(),
+                copy.getTitle(),
                 dueDate,
                 status.getDisplayName()
         );

@@ -36,21 +36,24 @@ public class ItemCopy {
         this.status = status;
     }
 
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
 
-//    В классе Loan:
-//    Удали поле private LibraryItem item;.
-//    Вместо него добавь private ItemCopy copy;.
-//    Соответственно поменяй конструктор, чтобы он принимал User user, ItemCopy copy.
-//    Обнови геттеры и сеттеры (getCopy()).
-//    Логика статусов в Loan:
-//    В конструкторе Loan удали работу со счетчиками (нет больше item.decrementAvailableCopies()). Вместо этого меняй статус самого экземпляра: copy.setStatus(ItemStatus.LOANED);.
-//    В методе returnItem() в классе Loan делай то же самое при возврате: copy.setStatus(ItemStatus.AVAILABLE);.
-//    В LoanRepository:
-//    Везде, где ты искал совпадения по item, теперь нужно достучаться до item через copy. Например: loan.getCopy().getItem().equals(item).
-//
-//    Методы equals и hashCode: В репозитории ты используешь !copies.contains(copy).
-//    Чтобы метод contains работал корректно и понимал, что это один и тот же объект,
-//    нужно переопределить эти методы (сравнивать по id), как ты это делал в User и LibraryItem.
+        ItemCopy item = (ItemCopy) object;
+
+        return id != null && id.equals(item.id);
+
+    }
+
+    @Override
+    public int hashCode() {
+        if (id != null) {
+            return id.hashCode();
+        }
+        return 0;
+    }
 
     @Override
     public String toString() {
