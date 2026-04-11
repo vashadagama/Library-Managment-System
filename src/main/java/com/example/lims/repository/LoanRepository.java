@@ -16,4 +16,6 @@ public interface LoanRepository extends JpaRepository<Loan, UUID> {
     
     @Query("SELECT l FROM Loan l WHERE l.status = 'ACTIVE' AND l.dueDate < :today")
     List<Loan> findExpiredLoans(LocalDate today);
+
+    long countByUserIdAndStatus(UUID userId, LoanStatus status);
 }

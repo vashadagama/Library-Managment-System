@@ -22,6 +22,9 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    @Column(nullable = false)
+    private Integer maxActiveLoans = 5;
+
     private String phoneNumber;
     private LocalDate registrationDate = LocalDate.now();
 
@@ -65,4 +68,6 @@ public class User {
     public void setRole(UserRole role) { this.role = role; }
     public UserStatus getStatus() { return status; }
     public void setStatus(UserStatus status) { this.status = status; }
+    public Integer getMaxActiveLoans() { return maxActiveLoans; }
+    public void setMaxActiveLoans(Integer maxActiveLoans) { this.maxActiveLoans = maxActiveLoans; }
 }

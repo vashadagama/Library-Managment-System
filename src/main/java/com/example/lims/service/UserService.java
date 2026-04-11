@@ -7,6 +7,7 @@ import com.example.lims.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,5 +46,24 @@ public class UserService {
         );
 
         return userRepository.save(newUser);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public User changeUserStatus(UUID userId, com.example.lims.enums.UserStatus newStatus) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+        user.setStatus(newStatus);
+        return userRepository.save(user);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public User updateMaxLoansLimit(UUID userId, Integer newLimit) {
+        if (newLimit < 0) {
+            throw new RuntimeException("Лимит не может быть меньше нуля");
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+        user.setMaxActiveLoans(newLimit);
+        return userRepository.save(user);
     }
 }

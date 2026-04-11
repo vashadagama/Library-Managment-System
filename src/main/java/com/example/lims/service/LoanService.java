@@ -28,21 +28,24 @@ public class LoanService {
 
     @Transactional
     public Loan issueBook(UUID userId, UUID itemId) {
-    
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        if (user.getStatus() == com.example.lims.enums.UserStatus.BLOCKED ||
+                user.getStatus() == com.example.lims.enums.UserStatus.FROZEN) {
+            throw new RuntimeException("Выдача запрещена. Статус аккаунта: " + user.getStatus().getDisplayName());
+        }
 
         ItemCopy availableCopy = itemCopyRepository.findByItemIdAndStatus(itemId, ItemStatus.AVAILABLE)
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Нет свободных экземпляров этой книги"));
 
-        long activeLoans = loanRepository.findAll().stream()
-                .filter(l -> l.getUser().getId().equals(userId) && l.getStatus() == LoanStatus.ACTIVE)
-                .count();
-    
-        if (activeLoans >= 3) {
-            throw new RuntimeException("Читатель уже взял максимум книг (3 шт)");
+        long activeLoans = loanRepository.countByUserIdAndStatus(userId, LoanStatus.ACTIVE);
+
+        if (activeLoans >= user.getMaxActiveLoans()) {
+            throw new RuntimeException("Читатель уже взял максимум книг (" + user.getMaxActiveLoans() + " шт)");
         }
 
         availableCopy.setStatus(ItemStatus.BORROVED);
@@ -50,7 +53,7 @@ public class LoanService {
 
         Loan loan = new Loan(user, availableCopy);
         loan.setDueDate(java.time.LocalDate.now().plusDays(14));
-    
+
         return loanRepository.save(loan);
     }
 
