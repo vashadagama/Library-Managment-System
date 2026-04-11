@@ -1,0 +1,10 @@
+package com.example.lims.repository;
+
+import com.example.lims.model.Magazine;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.UUID;
+
+@Repository
+public interface MagazineRepository extends JpaRepository<Magazine, UUID> {
+}
