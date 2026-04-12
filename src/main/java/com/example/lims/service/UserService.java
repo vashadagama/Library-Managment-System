@@ -2,6 +2,7 @@ package com.example.lims.service;
 
 import com.example.lims.dto.UserCreateDto;
 import com.example.lims.dto.UserDto;
+import com.example.lims.enums.UserStatus;
 import com.example.lims.model.User;
 import com.example.lims.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -39,10 +40,11 @@ public class UserService {
         User newUser = new User(
                 dto.getFirstName(),
                 dto.getLastName(),
-                null, 
+                null,
                 dto.getEmail(),
                 dto.getRole(),
-                "LIB-" + System.currentTimeMillis() 
+                null,
+                "LIB-" + System.currentTimeMillis()
         );
 
         return userRepository.save(newUser);

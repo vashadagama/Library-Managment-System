@@ -22,6 +22,9 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    @Column
+    private String password;
+
     @Column(nullable = false)
     private Integer maxActiveLoans = 5;
 
@@ -36,13 +39,14 @@ public class User {
 
     public User() {}
 
-    public User(String firstName, String lastName, String patronimyc, String email, UserRole role, String libraryCardNumber) {
+    public User(String firstName, String lastName, String patronimyc, String email, UserRole role, String password, String libraryCardNumber) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.patronimyc = patronimyc;
         this.email = email;
         this.role = role;
         this.libraryCardNumber = libraryCardNumber;
+        this.password = password;
     }
 
     public String getFullName() {
@@ -70,4 +74,6 @@ public class User {
     public void setStatus(UserStatus status) { this.status = status; }
     public Integer getMaxActiveLoans() { return maxActiveLoans; }
     public void setMaxActiveLoans(Integer maxActiveLoans) { this.maxActiveLoans = maxActiveLoans; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 }
