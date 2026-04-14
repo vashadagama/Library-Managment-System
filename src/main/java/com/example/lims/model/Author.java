@@ -2,6 +2,8 @@ package com.example.lims.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -14,10 +16,10 @@ public class Author {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
+    @NotBlank(message = "Имя автора обязательно")
     private String firstName;
 
-    @Column(nullable = false)
+    @NotBlank(message = "Фамилия автора обязательна")
     private String lastName;
 
     private String middleName;

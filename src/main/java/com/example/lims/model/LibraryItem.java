@@ -1,6 +1,8 @@
 package com.example.lims.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,14 +17,20 @@ public abstract class LibraryItem {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @NotBlank(message = "Название обязательно")
     private String title;
-    private String location;
-    private String isbn;
-    private String language;
-    private String publisher;
-    private LocalDate publicationDate;
-    private LocalDate addedToLibraryDate = LocalDate.now();
 
+    private String location;
+
+    @NotBlank(message = "Язык обязателен")
+    private String language;
+
+    private String publisher;
+
+    @NotNull(message = "Дата публикации обязательна")
+    private LocalDate publicationDate;
+
+    private LocalDate addedToLibraryDate = LocalDate.now();
 
     @ManyToMany
     @JoinTable(
@@ -35,11 +43,10 @@ public abstract class LibraryItem {
     public LibraryItem() {}
 
     public LibraryItem(String title, String publisher, LocalDate publicationDate,
-                       String isbn, String location, String language) {
+                       String location, String language) {
         this.title = title;
         this.publisher = publisher;
         this.publicationDate = publicationDate;
-        this.isbn = isbn;
         this.location = location;
         this.language = language;
     }
@@ -53,14 +60,11 @@ public abstract class LibraryItem {
 
     public abstract String getItemType();
 
-
     public UUID getId() { return id; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
-    public String getIsbn() { return isbn; }
-    public void setIsbn(String isbn) { this.isbn = isbn; }
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
     public String getPublisher() { return publisher; }

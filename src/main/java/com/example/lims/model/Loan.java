@@ -38,19 +38,20 @@ public class Loan {
     }
 
     public void returnItem() {
-        if (this.status == LoanStatus.RETURNED) return;
+        if (this.status == LoanStatus.RETURNED) {
+            throw new IllegalStateException("Книга уже возвращена");
+        }
         this.returnDate = LocalDate.now();
         this.status = LoanStatus.RETURNED;
         this.copy.setStatus(ItemStatus.AVAILABLE);
     }
 
     public void renewLoan(Integer extraDays) {
-        if (this.status == LoanStatus.ACTIVE) {
-            this.dueDate = this.dueDate.plusDays(extraDays);
-            this.status = LoanStatus.RENEWED;
-        } else {
+        if (this.status != LoanStatus.ACTIVE && this.status != LoanStatus.RENEWED) {
             throw new IllegalStateException("Нельзя продлить книгу со статусом: " + status);
         }
+        this.dueDate = this.dueDate.plusDays(extraDays);
+        this.status = LoanStatus.RENEWED;
     }
 
     public void setStatus(LoanStatus status) { this.status = status; }

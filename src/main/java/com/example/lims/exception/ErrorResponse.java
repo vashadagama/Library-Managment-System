@@ -4,13 +4,16 @@ import java.time.LocalDateTime;
 
 public class ErrorResponse {
     private String message;
-    private LocalDateTime timeStamp;
+    private LocalDateTime timestamp;
+    private int status;
 
-    public ErrorResponse(String message) {
+    public ErrorResponse(String message, int status) {
         this.message = message;
-        this.timeStamp = LocalDateTime.now();
+        this.timestamp = LocalDateTime.now();
+        this.status = status;
     }
 
     public String getMessage() { return message; }
-    public LocalDateTime getTimestamp() { return timeStamp; }
+    public LocalDateTime getTimestamp() { return timestamp; }
+    public int getStatus() { return status; }
 }

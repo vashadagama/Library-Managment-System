@@ -40,12 +40,10 @@ public class DataInitializer implements CommandLineRunner {
 
         System.out.println("Начинаем заполнение базы тестовыми данными...");
 
-
         Author author1 = new Author("Джоан", "Роулинг", "Кэтлин");
         Author author2 = new Author("Стивен", "Кинг", "Эдвин");
         authorRepository.save(author1);
         authorRepository.save(author2);
-
 
         Book book1 = new Book("Гарри Поттер и Философский камень", "Росмэн",
                 LocalDate.of(1997, 6, 26), "978-5-353-00308-3",
@@ -59,12 +57,10 @@ public class DataInitializer implements CommandLineRunner {
         book2.addAuthor(author2);
         bookRepository.save(book2);
 
-
         Magazine mag1 = new Magazine("National Geographic", "NatGeo Society",
-                LocalDate.of(2023, 10, 1), "ISSN-1234",
+                LocalDate.of(2023, 10, 1), "1234-5678",
                 "Стенд журналов", "Английский", MagazineGenre.POPULAR_SCIENTIFIC, 120, true);
         magazineRepository.save(mag1);
-
 
         ItemCopy copy1Book1 = new ItemCopy(book1, "INV-BK-001");
         ItemCopy copy2Book1 = new ItemCopy(book1, "INV-BK-002");
@@ -76,7 +72,6 @@ public class DataInitializer implements CommandLineRunner {
         itemCopyRepository.save(copy1Book2);
         itemCopyRepository.save(copy1Mag1);
 
-
         User admin = new User("Иван", "Иванов", "Иванович", "admin@lims.com",
                 UserRole.ADMIN, passwordEncoder.encode("VCa9m15nDs4"), "LIB-0001");
 
@@ -84,7 +79,7 @@ public class DataInitializer implements CommandLineRunner {
                 UserRole.READER, passwordEncoder.encode("aBamaBlack17"), "LIB-0002");
 
         User reader2 = new User("Антонина", "Улицкая", "Ивановна", "antonina@test.com",
-                UserRole.READER, null, "LIB-0003");
+                UserRole.READER, passwordEncoder.encode("tempPass123"), "LIB-0003");
 
         userRepository.save(admin);
         userRepository.save(reader);

@@ -14,9 +14,15 @@ public class UserCreateDto {
     @NotBlank(message = "Фамилия обязательна")
     private String lastName;
 
+    private String patronimyc;
+
     @NotBlank(message = "Email обязателен")
     @Email(message = "Неверный формат электронной почты")
     private String email;
+
+    @NotBlank(message = "Пароль обязателен")
+    @Size(min = 6, message = "Пароль должен содержать минимум 6 символов")
+    private String password;
 
     private UserRole role;
 
@@ -39,12 +45,28 @@ public class UserCreateDto {
         this.lastName = lastName;
     }
 
+    public String getPatronimyc() {
+        return patronimyc;
+    }
+
+    public void setPatronimyc(String patronimyc) {
+        this.patronimyc = patronimyc;
+    }
+
     public String getEmail() {
         return email;
     }
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public UserRole getRole() {

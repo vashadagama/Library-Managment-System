@@ -2,7 +2,9 @@ package com.example.lims.controller;
 
 import com.example.lims.model.Author;
 import com.example.lims.service.AuthorService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -21,7 +23,7 @@ public class AuthorController {
     }
 
     @PostMapping
-    public Author create(@RequestBody Author author) {
+    public Author create(@Valid @RequestBody Author author) {
         return authorService.createAuthor(author);
     }
 

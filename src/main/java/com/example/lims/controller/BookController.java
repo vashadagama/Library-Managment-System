@@ -3,7 +3,7 @@ package com.example.lims.controller;
 import com.example.lims.model.Book;
 import com.example.lims.repository.BookRepository;
 import com.example.lims.service.BookService;
-
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +23,7 @@ public class BookController {
     }
 
     @PostMapping
-    public Book create(@RequestBody Book book) {
+    public Book create(@Valid @RequestBody Book book) {
         return bookService.createBook(book);
     }
 
