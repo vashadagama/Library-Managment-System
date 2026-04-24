@@ -50,9 +50,12 @@ public class User {
     }
 
     public String getFullName() {
-        return firstName + " " + lastName + " " + patronimyc;
+        String full = firstName + " " + lastName;
+        if (patronimyc != null && !patronimyc.isBlank()) {
+            full += " " + patronimyc;
+        }
+        return full;
     }
-
 
     public UUID getId() { return id; }
     public String getLibraryCardNumber() { return libraryCardNumber; }

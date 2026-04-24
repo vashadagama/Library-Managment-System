@@ -1,5 +1,6 @@
 package com.example.lims.controller;
 
+import com.example.lims.enums.BookGenre;
 import com.example.lims.model.Book;
 import com.example.lims.repository.BookRepository;
 import com.example.lims.service.BookService;
@@ -49,4 +50,19 @@ public class BookController {
     public List<Book> getByPublisher(@RequestParam String name) {
         return bookRepository.findByPublisherIgnoreCase(name);
     }
+
+    @GetMapping("/search")
+    public Page<Book> searchBooks(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) BookGenre genre,
+            @RequestParam(required = false) String publisher,
+            @RequestParam(required = false) Integer yearFrom,
+            @RequestParam(required = false) Integer yearTo,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return bookService.searchBooks(title, genre, publisher, yearFrom, yearTo, page, size);
+    }
+
+
 }

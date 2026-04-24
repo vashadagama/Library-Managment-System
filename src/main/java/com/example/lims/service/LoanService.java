@@ -121,7 +121,7 @@ public class LoanService {
     }
 
     public List<Loan> getOverdueLoans() {
-        return loanRepository.findExpiredLoans(LocalDate.now());
+        return loanRepository.findExpiredLoans();
     }
 
     @Transactional(readOnly = true)

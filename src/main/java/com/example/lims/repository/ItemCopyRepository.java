@@ -13,4 +13,5 @@ public interface ItemCopyRepository extends JpaRepository<ItemCopy, UUID> {
     List<ItemCopy> findByItemIdAndStatus(UUID itemId, ItemStatus status);
     List<ItemCopy> findByItemId(UUID itemId);
     List<ItemCopy> findByStatus(ItemStatus status);
+    boolean existsByInventoryNumber(String inventoryNumber);
 }

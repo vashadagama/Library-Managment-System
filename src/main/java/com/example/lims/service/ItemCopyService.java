@@ -30,6 +30,10 @@ public class ItemCopyService {
         LibraryItem item = libraryItemRepository.findById(dto.getLibraryItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Издание не найдено"));
 
+        if (itemCopyRepository.existsByInventoryNumber(dto.getInventoryNumber())) {
+            throw new BusinessLogicException("Экземпляр с таким инвентарным номером уже существует");
+        }
+
         ItemCopy copy = new ItemCopy(item, dto.getInventoryNumber());
         copy.setStatus(ItemStatus.AVAILABLE);
         return itemCopyRepository.save(copy);
@@ -80,7 +84,6 @@ public class ItemCopyService {
         itemCopyRepository.delete(copy);
     }
 
-    // Метод для получения доступных копий издания (уже был, оставляем)
     @Transactional(readOnly = true)
     public List<ItemCopy> getAvailableCopies(UUID itemId) {
         return itemCopyRepository.findByItemIdAndStatus(itemId, ItemStatus.AVAILABLE);
