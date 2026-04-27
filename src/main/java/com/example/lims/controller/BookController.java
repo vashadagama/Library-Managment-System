@@ -28,6 +28,16 @@ public class BookController {
         return bookService.createBook(book);
     }
 
+    @PutMapping("/{id}")
+    public Book update(@PathVariable UUID id, @Valid @RequestBody Book book) {
+        return bookService.updateBook(id, book);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable UUID id) {
+        bookService.deleteBook(id);
+    }
+
     @GetMapping
     public Page<Book> getBooks(
             @RequestParam(defaultValue = "0") int page,
@@ -63,6 +73,4 @@ public class BookController {
     ) {
         return bookService.searchBooks(title, genre, publisher, yearFrom, yearTo, page, size);
     }
-
-
 }

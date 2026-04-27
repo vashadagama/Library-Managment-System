@@ -21,7 +21,8 @@ public class DataInitializer implements CommandLineRunner {
 
     public DataInitializer(AuthorRepository authorRepository, BookRepository bookRepository,
                            MagazineRepository magazineRepository, ItemCopyRepository itemCopyRepository,
-                           UserRepository userRepository, LoanRepository loanRepository, PasswordEncoder passwordEncoder) {
+                           UserRepository userRepository, LoanRepository loanRepository,
+                           PasswordEncoder passwordEncoder) {
         this.authorRepository = authorRepository;
         this.bookRepository = bookRepository;
         this.magazineRepository = magazineRepository;
@@ -75,17 +76,21 @@ public class DataInitializer implements CommandLineRunner {
         User admin = new User("Иван", "Иванов", "Иванович", "admin@lims.com",
                 UserRole.ADMIN, passwordEncoder.encode("VCa9m15nDs4"), "LIB-0001");
 
-        User reader = new User("Петр", "Петров", "Сергеевич", "petr@test.com",
-                UserRole.READER, passwordEncoder.encode("aBamaBlack17"), "LIB-0002");
+        User librarian = new User("Петр", "Петров", "Сергеевич", "petr@test.com",
+                UserRole.LIBRARIAN, passwordEncoder.encode("aBamaBlack17"), "LIB-0002");
 
-        User reader2 = new User("Антонина", "Улицкая", "Ивановна", "antonina@test.com",
-                UserRole.READER, passwordEncoder.encode("tempPass123"), "LIB-0003");
+        User reader1 = User.createReader("Антонина", "Улицкая", "Ивановна",
+                "antonina@test.com", "LIB-0003");
+
+        User reader2 = User.createReader("Сергей", "Сергеев", "Петрович",
+                "sergey@test.com", "LIB-0004");
 
         userRepository.save(admin);
-        userRepository.save(reader);
+        userRepository.save(librarian);
+        userRepository.save(reader1);
         userRepository.save(reader2);
 
-        Loan loan1 = new Loan(reader, copy1Book1);
+        Loan loan1 = new Loan(reader1, copy1Book1);
         loanRepository.save(loan1);
 
         System.out.println("Тестовые данные успешно загружены!");

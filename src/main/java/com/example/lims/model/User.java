@@ -22,7 +22,6 @@ public class User {
     @Column(unique = true)
     private String email;
 
-    @Column
     private String password;
 
     @Column(nullable = false)
@@ -39,7 +38,8 @@ public class User {
 
     public User() {}
 
-    public User(String firstName, String lastName, String patronimyc, String email, UserRole role, String password, String libraryCardNumber) {
+    public User(String firstName, String lastName, String patronimyc, String email,
+                UserRole role, String password, String libraryCardNumber) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.patronimyc = patronimyc;
@@ -47,6 +47,19 @@ public class User {
         this.role = role;
         this.libraryCardNumber = libraryCardNumber;
         this.password = password;
+    }
+
+    public static User createReader(String firstName, String lastName, String patronimyc,
+                                    String email, String libraryCardNumber) {
+        User reader = new User();
+        reader.firstName = firstName;
+        reader.lastName = lastName;
+        reader.patronimyc = patronimyc;
+        reader.email = email;
+        reader.role = UserRole.READER;
+        reader.libraryCardNumber = libraryCardNumber;
+        reader.password = null;
+        return reader;
     }
 
     public String getFullName() {

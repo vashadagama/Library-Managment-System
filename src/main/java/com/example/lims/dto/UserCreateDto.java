@@ -20,8 +20,7 @@ public class UserCreateDto {
     @Email(message = "Неверный формат электронной почты")
     private String email;
 
-    @NotBlank(message = "Пароль обязателен")
-    @Size(min = 6, message = "Пароль должен содержать минимум 6 символов")
+    // Пароль не обязателен (только для LIBRARIAN и ADMIN)
     private String password;
 
     private UserRole role;

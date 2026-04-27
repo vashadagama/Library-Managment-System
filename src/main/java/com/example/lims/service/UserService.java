@@ -2,6 +2,7 @@ package com.example.lims.service;
 
 import com.example.lims.dto.UserCreateDto;
 import com.example.lims.dto.UserDto;
+import com.example.lims.enums.UserRole;
 import com.example.lims.enums.UserStatus;
 import com.example.lims.exception.BusinessLogicException;
 import com.example.lims.exception.ResourceNotFoundException;
@@ -46,17 +47,35 @@ public class UserService {
             throw new BusinessLogicException("Пользователь с email " + dto.getEmail() + " уже существует!");
         }
 
-        User newUser = new User(
-                dto.getFirstName(),
-                dto.getLastName(),
-                dto.getPatronimyc(),
-                dto.getEmail(),
-                dto.getRole() != null ? dto.getRole() : com.example.lims.enums.UserRole.READER,
-                passwordEncoder.encode(dto.getPassword()),
-                "LIB-" + System.currentTimeMillis()
-        );
+        UserRole role = dto.getRole() != null ? dto.getRole() : UserRole.READER;
 
-        return userRepository.save(newUser);
+        if (role == UserRole.READER) {
+            // Для читателей пароль не нужен
+            User reader = User.createReader(
+                    dto.getFirstName(),
+                    dto.getLastName(),
+                    dto.getPatronimyc(),
+                    dto.getEmail(),
+                    "LIB-" + System.currentTimeMillis()
+            );
+            return userRepository.save(reader);
+        } else {
+            // Для библиотекарей и админов пароль обязателен
+            if (dto.getPassword() == null || dto.getPassword().isBlank()) {
+                throw new BusinessLogicException("Пароль обязателен для роли " + role.getDisplayName());
+            }
+
+            User staff = new User(
+                    dto.getFirstName(),
+                    dto.getLastName(),
+                    dto.getPatronimyc(),
+                    dto.getEmail(),
+                    role,
+                    passwordEncoder.encode(dto.getPassword()),
+                    "LIB-" + System.currentTimeMillis()
+            );
+            return userRepository.save(staff);
+        }
     }
 
     @Transactional

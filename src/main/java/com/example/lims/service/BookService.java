@@ -29,6 +29,29 @@ public class BookService {
         return bookRepository.save(book);
     }
 
+    @Transactional
+    public Book updateBook(UUID id, Book updatedBook) {
+        Book existing = bookRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
+        existing.setTitle(updatedBook.getTitle());
+        existing.setPublisher(updatedBook.getPublisher());
+        existing.setPublicationDate(updatedBook.getPublicationDate());
+        existing.setLocation(updatedBook.getLocation());
+        existing.setLanguage(updatedBook.getLanguage());
+        existing.setIsbn(updatedBook.getIsbn());
+        existing.setGenre(updatedBook.getGenre());
+        existing.setPageCount(updatedBook.getPageCount());
+        // авторы обновляются отдельно через связь many-to-many, если потребуется
+        return bookRepository.save(existing);
+    }
+
+    @Transactional
+    public void deleteBook(UUID id) {
+        Book book = bookRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
+        bookRepository.delete(book);
+    }
+
     public Page<Book> getAllBooks(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return bookRepository.findAll(pageable);
