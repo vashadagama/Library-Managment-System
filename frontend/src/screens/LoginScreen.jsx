@@ -5,27 +5,80 @@ import { useNavigate } from 'react-router-dom';
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    if (!email || !password) {
+      setError('Заполните все поля');
+      return;
+    }
     try {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      alert('Ошибка входа: ' + err.response?.data?.message || err.message);
+      setError(err.response?.data?.message || 'Ошибка входа. Проверьте данные.');
     }
   };
 
   return (
-    <div style={{ padding: 40 }}>
-      <h2>Вход в систему</h2>
-      <form onSubmit={handleSubmit}>
-        <div><input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} /></div>
-        <div><input type="password" placeholder="Пароль" value={password} onChange={e => setPassword(e.target.value)} /></div>
-        <div><button type="submit">Войти</button></div>
-      </form>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%)'
+    }}>
+      <div className="card" style={{
+        width: '400px',
+        padding: '40px'
+      }}>
+        <h2 style={{ textAlign: 'center', border: 'none', marginBottom: '30px' }}>
+          📚 Библиотека LIMS
+        </h2>
+        <p style={{ textAlign: 'center', color: 'var(--text-light)', marginBottom: '30px' }}>
+          Вход для сотрудников
+        </p>
+
+        {error && <div className="alert alert-error">{error}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              placeholder="Введите email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              style={{ width: '100%' }}
+              autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Пароль</label>
+            <input
+              type="password"
+              placeholder="Введите пароль"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <button type="submit" style={{
+            width: '100%',
+            padding: '12px',
+            fontSize: '16px',
+            marginTop: '20px'
+          }}>
+            Войти
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

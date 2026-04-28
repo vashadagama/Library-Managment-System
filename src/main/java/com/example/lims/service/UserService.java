@@ -96,4 +96,12 @@ public class UserService {
         user.setMaxActiveLoans(newLimit);
         return userRepository.save(user);
     }
+
+    @Transactional(readOnly = true)
+    public List<UserDto> searchUsers(String search) {
+        List<User> users = userRepository.searchUsers(search);
+        return users.stream()
+                .map(user -> new UserDto(user.getId(), user.getFullName(), user.getEmail(), user.getRole()))
+                .collect(Collectors.toList());
+    }
 }

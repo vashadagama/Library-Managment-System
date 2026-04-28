@@ -46,4 +46,9 @@ public class UserController {
         }
         return userService.updateMaxLoansLimit(id, newLimit);
     }
+
+    @GetMapping("/search")
+    public List<UserDto> searchUsers(@RequestParam String q) {
+        return userService.searchUsers(q);
+    }
 }

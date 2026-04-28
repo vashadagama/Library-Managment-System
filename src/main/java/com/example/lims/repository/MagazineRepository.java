@@ -13,9 +13,11 @@ import java.util.UUID;
 @Repository
 public interface MagazineRepository extends JpaRepository<Magazine, UUID> {
     @Query("SELECT m FROM Magazine m WHERE " +
+            "(:title IS NULL OR m.title ILIKE CONCAT('%', CAST(:title AS string), '%')) AND " +
             "(:genre IS NULL OR m.genre = :genre) AND " +
-            "(:publisher IS NULL OR LOWER(m.publisher) LIKE LOWER(CONCAT('%', :publisher, '%')))")
-    Page<Magazine> searchMagazines(@Param("genre") MagazineGenre genre,
+            "(:publisher IS NULL OR m.publisher ILIKE CONCAT('%', CAST(:publisher AS string), '%'))")
+    Page<Magazine> searchMagazines(@Param("title") String title,
+                                   @Param("genre") MagazineGenre genre,
                                    @Param("publisher") String publisher,
                                    Pageable pageable);
 }

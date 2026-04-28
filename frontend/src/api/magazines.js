@@ -1,7 +1,9 @@
 import api from './axios';
 
-export const getMagazines = (page = 0, size = 10) =>
-  api.get('/magazines', { params: { page, size } });
+export const getMagazines = (page = 0, size = 10, filters = {}) => {
+  const params = { page, size, ...filters };
+  return api.get('/magazines', { params });
+};
 
 export const getMagazine = (id) => api.get(`/magazines/${id}`);
 

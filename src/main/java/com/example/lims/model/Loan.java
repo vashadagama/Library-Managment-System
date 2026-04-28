@@ -54,16 +54,25 @@ public class Loan {
         this.status = LoanStatus.RENEWED;
     }
 
-    public void setStatus(LoanStatus status) { this.status = status; }
-    public void setReturnDate(LocalDate returnDate) { this.returnDate = returnDate; }
-    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+    // Геттеры и сеттеры
     public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
+
     public ItemCopy getCopy() { return copy; }
     public void setCopy(ItemCopy copy) { this.copy = copy; }
+
     public LocalDate getLoanDate() { return loanDate; }
+    public void setLoanDate(LocalDate loanDate) { this.loanDate = loanDate; }
+
     public LocalDate getDueDate() { return dueDate; }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+
     public LocalDate getReturnDate() { return returnDate; }
+    public void setReturnDate(LocalDate returnDate) { this.returnDate = returnDate; }
+
     public LoanStatus getStatus() { return status; }
+    public void setStatus(LoanStatus status) { this.status = status; }
 }

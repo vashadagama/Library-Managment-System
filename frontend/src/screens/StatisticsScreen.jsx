@@ -4,7 +4,11 @@ import { getPopularBooks } from '../api/statistics';
 const StatisticsScreen = () => {
   const [books, setBooks] = useState([]);
 
-  useEffect(() => { getPopularBooks(10, null).then(res => setBooks(res.data)); }, []);
+useEffect(() => {
+  getPopularBooks(10, null)
+    .then(res => setBooks(res.data))
+    .catch(() => {});
+}, []);
 
   return (
     <div>

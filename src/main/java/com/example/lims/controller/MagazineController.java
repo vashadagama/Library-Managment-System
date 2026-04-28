@@ -27,11 +27,12 @@ public class MagazineController {
     public Page<Magazine> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String title,
             @RequestParam(required = false) MagazineGenre genre,
             @RequestParam(required = false) String publisher
     ) {
-        if (genre != null || publisher != null) {
-            return magazineService.search(genre, publisher, page, size);
+        if (title != null || genre != null || publisher != null) {
+            return magazineService.search(title, genre, publisher, page, size);
         }
         return magazineService.getAll(page, size);
     }

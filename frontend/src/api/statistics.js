@@ -5,3 +5,6 @@ export const getPopularBooks = (limit = 10, year) =>
 
 export const getSummaryStatistics = () =>
   api.get('/loans/statistics/summary');
+
+export const getOverdueLoans = () =>
+  api.get('/loans/overdue');

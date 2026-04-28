@@ -30,9 +30,9 @@ public class MagazineService {
         return magazineRepository.findAll(PageRequest.of(page, size));
     }
 
-    public Page<Magazine> search(MagazineGenre genre, String publisher, int page, int size) {
+    public Page<Magazine> search(String title, MagazineGenre genre, String publisher, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return magazineRepository.searchMagazines(genre, publisher, pageable);
+        return magazineRepository.searchMagazines(title, genre, publisher, pageable);
     }
 
     @Transactional

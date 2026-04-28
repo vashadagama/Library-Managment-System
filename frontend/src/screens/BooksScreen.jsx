@@ -17,10 +17,9 @@ const BooksScreen = () => {
     searchBooks(params).then(res => {
       setBooks(res.data.content);
       setTotalPages(res.data.totalPages);
-    }).catch(() => getBooks(page).then(res => {
-      setBooks(res.data.content);
-      setTotalPages(res.data.totalPages);
-    }));
+    }).catch(err => {
+      console.error('Ошибка загрузки книг:', err);
+    });
   };
 
   useEffect(() => { fetchBooks(); }, [page, search]);

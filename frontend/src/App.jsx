@@ -4,9 +4,8 @@ import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 import LoginScreen from './screens/LoginScreen';
 import Dashboard from './screens/Dashboard';
-import BooksScreen from './screens/BooksScreen';
+import CatalogScreen from './screens/CatalogScreen'; // новый
 import BookDetailScreen from './screens/BookDetailScreen';
-import MagazinesScreen from './screens/MagazinesScreen';
 import MagazineDetailScreen from './screens/MagazineDetailScreen';
 import ReadersScreen from './screens/ReadersScreen';
 import LoansScreen from './screens/LoansScreen';
@@ -26,9 +25,8 @@ const App = () => {
             }
           >
             <Route path="/" element={<Dashboard />} />
-            <Route path="/books" element={<BooksScreen />} />
+            <Route path="/catalog" element={<CatalogScreen />} />
             <Route path="/books/:id" element={<BookDetailScreen />} />
-            <Route path="/magazines" element={<MagazinesScreen />} />
             <Route path="/magazines/:id" element={<MagazineDetailScreen />} />
             <Route path="/readers" element={<ReadersScreen />} />
             <Route path="/loans" element={<LoansScreen />} />
