@@ -1,12 +1,14 @@
 package com.example.lims.service;
 
-import com.example.lims.dto.UserCreateDto;
 import com.example.lims.dto.UserDto;
+import com.example.lims.dto.UserCreateDto;
+import com.example.lims.enums.LoanStatus;
 import com.example.lims.enums.UserRole;
 import com.example.lims.enums.UserStatus;
 import com.example.lims.exception.BusinessLogicException;
 import com.example.lims.exception.ResourceNotFoundException;
 import com.example.lims.model.User;
+import com.example.lims.repository.LoanRepository;
 import com.example.lims.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,22 +23,33 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LoanRepository loanRepository;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       LoanRepository loanRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.loanRepository = loanRepository;
     }
 
     @Transactional(readOnly = true)
     public List<UserDto> getAllUsers() {
         List<User> users = userRepository.findAll();
         return users.stream()
-                .map(user -> new UserDto(
-                        user.getId(),
-                        user.getFullName(),
-                        user.getEmail(),
-                        user.getRole()
-                ))
+                .map(user -> {
+                    long activeLoans = loanRepository.countByUserIdAndStatusIn(
+                            user.getId(),
+                            List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE)
+                    );
+                    return new UserDto(
+                            user.getId(),
+                            user.getFullName(),
+                            user.getEmail(),
+                            user.getRole(),
+                            (int) activeLoans
+                    );
+                })
                 .collect(Collectors.toList());
     }
 
@@ -101,7 +114,19 @@ public class UserService {
     public List<UserDto> searchUsers(String search) {
         List<User> users = userRepository.searchUsers(search);
         return users.stream()
-                .map(user -> new UserDto(user.getId(), user.getFullName(), user.getEmail(), user.getRole()))
+                .map(user -> {
+                    long activeLoans = loanRepository.countByUserIdAndStatusIn(
+                            user.getId(),
+                            List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE)
+                    );
+                    return new UserDto(
+                            user.getId(),
+                            user.getFullName(),
+                            user.getEmail(),
+                            user.getRole(),
+                            (int) activeLoans
+                    );
+                })
                 .collect(Collectors.toList());
     }
 }

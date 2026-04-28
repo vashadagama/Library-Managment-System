@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const issueByItem = (userId, libraryItemId) =>
+export const issueByLibraryItem = (userId, libraryItemId) =>
   api.post('/loans/issue/by-item', null, { params: { userId, libraryItemId } });
 
 export const issueByCopy = (userId, copyId) =>

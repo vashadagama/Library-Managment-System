@@ -29,7 +29,7 @@ const CatalogScreen = () => {
       if (type === 'books') {
         res = await searchBooks(params);
       } else {
-        // для журналов используем searchMagazines, передавая title
+        // для журналов используем getMagazines с параметром title
         res = await getMagazines(page, 10, { title: search });
       }
       setItems(res.data.content);
@@ -45,27 +45,11 @@ const CatalogScreen = () => {
     fetchItems();
   }, [type, page, search]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Удалить запись?')) return;
-    try {
-      if (type === 'books') {
-        await deleteBook(id);
-      } else {
-        await deleteMagazine(id);
-      }
-      fetchItems();
-    } catch (err) {
-      alert('Ошибка удаления: ' + err.response?.data?.message || err.message);
-    }
-  };
-
   const handleTypeChange = (newType) => {
     setType(newType);
     setPage(0);
+    // Оставляем поиск, но можно и сбросить по желанию
   };
-
-  const allowedToEdit = user?.role === 'ROLE_LIBRARIAN' || user?.role === 'ROLE_ADMIN';
-  const isAdmin = user?.role === 'ROLE_ADMIN';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
@@ -81,7 +65,7 @@ const CatalogScreen = () => {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
         />
-        {allowedToEdit && (
+        { (user?.role === 'ROLE_LIBRARIAN' || user?.role === 'ROLE_ADMIN') && (
           <button onClick={() => navigate(type === 'books' ? '/books/new' : '/magazines/new')}>
             Добавить
           </button>
@@ -104,19 +88,17 @@ const CatalogScreen = () => {
                 <td>{item.title}</td>
                 <td>
                   {type === 'books'
-                    ? (item.authors?.map(a => a.lastName).join(', ') || '—')
-                    : item.publisher}
+                    ? (item.authors?.map(a => `${a.lastName} ${a.firstName}`).join(', ') || '—')
+                    : (item.publisher || '—')}
                 </td>
                 <td>{item.genre}</td>
                 <td style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <button onClick={() => navigate(`/${type}/${item.id}`)}>
-                    Экземпляры
+                    Подробнее
                   </button>
-                  {isAdmin && (
-                    <button className="danger" onClick={() => handleDelete(item.id)}>
-                      Удалить
-                    </button>
-                  )}
+                  <button onClick={() => navigate(`/issue/${item.id}?type=${type}`)}>
+                    Выдать
+                  </button>
                 </td>
               </tr>
             ))}

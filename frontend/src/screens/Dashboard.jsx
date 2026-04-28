@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
-import { getSummaryStatistics, getOverdueLoans } from '../api/statistics';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getSummaryStatistics, getOverdueLoans } from '../api/statistics';
+import { searchBooks } from '../api/books';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({});
   const [overdue, setOverdue] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('book');
+  const [fastResults, setFastResults] = useState([]);
+  const [loadingFast, setLoadingFast] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,18 +17,31 @@ const Dashboard = () => {
     getOverdueLoans().then(res => setOverdue(res.data.slice(0, 5))).catch(() => {});
   }, []);
 
-  const handleQuickSearch = () => {
-    if (!searchTerm.trim()) return;
-    switch (searchType) {
-      case 'book':
-        navigate(`/catalog?type=books&search=${encodeURIComponent(searchTerm)}`);
-        break;
-      case 'magazine':
-        navigate(`/catalog?type=magazines&search=${encodeURIComponent(searchTerm)}`);
-        break;
-      case 'reader':
-        navigate(`/readers?search=${encodeURIComponent(searchTerm)}`);
-        break;
+  // debounced search
+  useEffect(() => {
+    if (searchTerm.trim().length < 2) {
+      setFastResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setLoadingFast(true);
+      const params = { title: searchTerm.trim(), size: 3, page: 0 };
+      searchBooks(params)
+        .then(res => setFastResults(res.data.content))
+        .catch(() => setFastResults([]))
+        .finally(() => setLoadingFast(false));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const handleShowAll = () => {
+    const query = encodeURIComponent(searchTerm.trim());
+    if (searchType === 'book') {
+      navigate(`/catalog?type=books&search=${query}`);
+    } else if (searchType === 'magazine') {
+      navigate(`/catalog?type=magazines&search=${query}`);
+    } else {
+      navigate(`/readers?search=${query}`);
     }
   };
 
@@ -51,7 +67,7 @@ const Dashboard = () => {
       <div className="card">
         <h3>🔍 Быстрый поиск</h3>
         <div className="search-bar">
-          <select value={searchType} onChange={e => setSearchType(e.target.value)}>
+          <select value={searchType} onChange={e => { setSearchType(e.target.value); setFastResults([]); setSearchTerm(''); }}>
             <option value="book">📚 Книги</option>
             <option value="magazine">📰 Журналы</option>
             <option value="reader">👤 Читатели</option>
@@ -64,18 +80,40 @@ const Dashboard = () => {
             }
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            onKeyPress={e => e.key === 'Enter' && handleQuickSearch()}
           />
-          <button onClick={handleQuickSearch}>Искать</button>
         </div>
-        {searchTerm.trim() && (
-          <div style={{ marginTop: '8px' }}>
-            <button
-              onClick={handleQuickSearch}
-              style={{ background: 'var(--accent)', color: 'white' }}
-            >
-              Перейти ко всем результатам →
-            </button>
+
+        {/* Показываем топ-3 результата */}
+        {searchTerm.trim().length >= 2 && (
+          <div style={{ marginTop: '12px' }}>
+            {loadingFast && <p>Загрузка...</p>}
+            {!loadingFast && fastResults.length > 0 && (
+              <>
+                <table style={{ marginBottom: '8px' }}>
+                  <thead>
+                    <tr>
+                      <th>Название</th>
+                      <th>Автор / Издатель</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fastResults.map(item => (
+                      <tr key={item.id}>
+                        <td>{item.title}</td>
+                        <td>
+                          {searchType === 'book'
+                            ? (item.authors?.map(a => `${a.lastName} ${a.firstName}`).join(', ') || '—')
+                            : (item.publisher || '—')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button onClick={handleShowAll} style={{ background: 'var(--accent)', color: 'white', marginTop: '8px' }}>
+                  Показать все результаты →
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

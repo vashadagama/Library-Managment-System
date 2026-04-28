@@ -8,12 +8,14 @@ public class UserDto {
     private String fullName;
     private String email;
     private UserRole role;
+    private int activeLoansCount;
 
-    public UserDto(UUID id, String fullName, String email, UserRole role) {
+    public UserDto(UUID id, String fullName, String email, UserRole role, int activeLoansCount) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
         this.role = role;
+        this.activeLoansCount = activeLoansCount;
     }
 
     public UUID getId() { return id; }
@@ -24,5 +26,6 @@ public class UserDto {
     public void setEmail(String email) { this.email = email; }
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
-
+    public int getActiveLoansCount() { return activeLoansCount; }
+    public void setActiveLoansCount(int activeLoansCount) { this.activeLoansCount = activeLoansCount; }
 }

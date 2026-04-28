@@ -4,12 +4,13 @@ import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 import LoginScreen from './screens/LoginScreen';
 import Dashboard from './screens/Dashboard';
-import CatalogScreen from './screens/CatalogScreen'; // новый
+import CatalogScreen from './screens/CatalogScreen';
 import BookDetailScreen from './screens/BookDetailScreen';
 import MagazineDetailScreen from './screens/MagazineDetailScreen';
 import ReadersScreen from './screens/ReadersScreen';
 import LoansScreen from './screens/LoansScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
+import IssuePage from './screens/IssuePage';
 
 const App = () => {
   return (
@@ -39,6 +40,7 @@ const App = () => {
               }
             />
           </Route>
+          <Route path="/issue/:itemId" element={<IssuePage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

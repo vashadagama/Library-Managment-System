@@ -58,7 +58,7 @@ const ReadersScreen = () => {
               <th>ФИО</th>
               <th>Email</th>
               <th>Статус</th>
-              <th>Макс. книг</th>
+              <th>Взято сейчас</th>
               <th>Действия</th>
             </tr>
           </thead>
@@ -72,7 +72,7 @@ const ReadersScreen = () => {
                     {r.status || 'ACTIVE'}
                   </span>
                 </td>
-                <td>{r.maxActiveLoans}</td>
+                <td style={{ textAlign: 'center' }}>{r.activeLoansCount ?? 0}</td>
                 <td>
                   <button className="warning" onClick={() => handleStatus(r.id, 'FROZEN')}>Заморозить</button>
                   <button className="success" onClick={() => handleStatus(r.id, 'ACTIVE')}>Активировать</button>
@@ -81,6 +81,7 @@ const ReadersScreen = () => {
                     defaultValue={r.maxActiveLoans}
                     onBlur={(e) => handleMaxLoans(r.id, parseInt(e.target.value))}
                     style={{ width: '60px', marginLeft: '5px' }}
+                    title="Лимит выдачи"
                   />
                 </td>
               </tr>
