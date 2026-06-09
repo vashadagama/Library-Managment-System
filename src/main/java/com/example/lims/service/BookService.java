@@ -41,7 +41,6 @@ public class BookService {
         existing.setIsbn(updatedBook.getIsbn());
         existing.setGenre(updatedBook.getGenre());
         existing.setPageCount(updatedBook.getPageCount());
-        // авторы обновляются отдельно через связь many-to-many, если потребуется
         return bookRepository.save(existing);
     }
 

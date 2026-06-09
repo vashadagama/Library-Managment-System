@@ -20,7 +20,6 @@ public class UserCreateDto {
     @Email(message = "Неверный формат электронной почты")
     private String email;
 
-    // Пароль не обязателен (только для LIBRARIAN и ADMIN)
     private String password;
 
     private UserRole role;

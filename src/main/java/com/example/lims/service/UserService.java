@@ -63,7 +63,6 @@ public class UserService {
         UserRole role = dto.getRole() != null ? dto.getRole() : UserRole.READER;
 
         if (role == UserRole.READER) {
-            // Для читателей пароль не нужен
             User reader = User.createReader(
                     dto.getFirstName(),
                     dto.getLastName(),
@@ -73,7 +72,6 @@ public class UserService {
             );
             return userRepository.save(reader);
         } else {
-            // Для библиотекарей и админов пароль обязателен
             if (dto.getPassword() == null || dto.getPassword().isBlank()) {
                 throw new BusinessLogicException("Пароль обязателен для роли " + role.getDisplayName());
             }
