@@ -20,10 +20,11 @@ public interface BookRepository extends JpaRepository<Book, UUID> {
     List<Book> findByGenre(BookGenre genre);
     List<Book> findByPublisherIgnoreCase(String publisher);
 
+    // Заменить метод searchBooks на:
     @Query("SELECT b FROM Book b WHERE " +
-            "(:title IS NULL OR b.title ILIKE CONCAT('%', CAST(:title AS string), '%')) AND " +
+            "(:title IS NULL OR b.title ILIKE CONCAT('%', :title, '%')) AND " +
             "(:genre IS NULL OR b.genre = :genre) AND " +
-            "(:publisher IS NULL OR b.publisher ILIKE CONCAT('%', CAST(:publisher AS string), '%')) AND " +
+            "(:publisher IS NULL OR b.publisher ILIKE CONCAT('%', :publisher, '%')) AND " +
             "(:yearFrom IS NULL OR b.publicationDate >= :yearFrom) AND " +
             "(:yearTo IS NULL OR b.publicationDate <= :yearTo)")
     Page<Book> searchBooks(@Param("title") String title,

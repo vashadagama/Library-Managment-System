@@ -29,7 +29,6 @@ const CatalogScreen = () => {
       if (type === 'books') {
         res = await searchBooks(params);
       } else {
-        // для журналов используем getMagazines с параметром title
         res = await getMagazines(page, 10, { title: search });
       }
       setItems(res.data.content);
@@ -48,7 +47,6 @@ const CatalogScreen = () => {
   const handleTypeChange = (newType) => {
     setType(newType);
     setPage(0);
-    // Оставляем поиск, но можно и сбросить по желанию
   };
 
   return (
@@ -99,6 +97,7 @@ const CatalogScreen = () => {
                   <button onClick={() => navigate(`/issue/${item.id}?type=${type}`)}>
                     Выдать
                   </button>
+                  <button onClick={() => navigate(`/${type}/edit/${item.id}`)}>Редактировать</button>
                 </td>
               </tr>
             ))}

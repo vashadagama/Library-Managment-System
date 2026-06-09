@@ -144,25 +144,14 @@ public class LoanService {
     public List<PopularBookDto> getMostPopularBooks(int limit, Integer year) {
         Pageable pageable = PageRequest.of(0, limit);
         List<Object[]> raw = loanRepository.findPopularBooksRaw(year, pageable);
-
-        Map<UUID, PopularBookDto> map = new LinkedHashMap<>();
-        for (Object[] row : raw) {
-            UUID itemId = (UUID) row[0];
-            String title = (String) row[1];
-            String lastName = (String) row[2];
-            String firstName = (String) row[3];
-            long count = ((Number) row[4]).longValue();
-
-            String authorFull = lastName + " " + firstName;
-            if (map.containsKey(itemId)) {
-                PopularBookDto existing = map.get(itemId);
-                String newAuthors = existing.getAuthors() + ", " + authorFull;
-                map.put(itemId, new PopularBookDto(itemId, title, newAuthors, count));
-            } else {
-                map.put(itemId, new PopularBookDto(itemId, title, authorFull, count));
-            }
-        }
-        return new ArrayList<>(map.values());
+        return raw.stream()
+                .map(row -> new PopularBookDto(
+                        (UUID) row[0],
+                        (String) row[1],
+                        (String) row[2],
+                        ((Number) row[3]).longValue()
+                ))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
