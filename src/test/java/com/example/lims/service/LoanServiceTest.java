@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,12 +41,11 @@ class LoanServiceTest {
     @Test
     void returnBook() {
         UUID loanId = UUID.randomUUID();
-        Loan loan = new Loan();
-        ItemCopy copy = new ItemCopy();
         User user = new User();
-
-        // Важно: правильно инициализируем Loan
-        loan = new Loan(user, copy);   // используем конструктор, который устанавливает copy
+        ItemCopy copy = new ItemCopy();
+        copy.setStatus(ItemStatus.BORROVED);
+        Loan loan = new Loan(user, copy);
+        loan.setDueDate(LocalDate.now().minusDays(1));
 
         when(loanRepository.findById(loanId)).thenReturn(Optional.of(loan));
         when(loanRepository.save(any(Loan.class))).thenAnswer(i -> i.getArgument(0));
@@ -55,6 +55,7 @@ class LoanServiceTest {
 
         assertNotNull(result);
         assertEquals(LoanStatus.RETURNED, result.getStatus());
+        assertEquals(ItemStatus.AVAILABLE, result.getCopy().getStatus());
         verify(itemCopyRepository).save(any(ItemCopy.class));
     }
 

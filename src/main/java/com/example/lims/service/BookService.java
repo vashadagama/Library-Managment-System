@@ -1,5 +1,6 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.BookDto;
 import com.example.lims.enums.BookGenre;
 import com.example.lims.exception.ResourceNotFoundException;
 import com.example.lims.model.Book;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -24,13 +26,33 @@ public class BookService {
         this.bookRepository = bookRepository;
     }
 
-    @Transactional
-    public Book createBook(Book book) {
-        return bookRepository.save(book);
+    private BookDto toDto(Book book) {
+        return new BookDto(
+                book.getId(),
+                book.getTitle(),
+                book.getPublisher(),
+                book.getPublicationDate(),
+                book.getIsbn(),
+                book.getLocation(),
+                book.getLanguage(),
+                book.getGenre(),
+                book.getPageCount(),
+                book.getAuthors()
+        );
+    }
+
+    private Page<BookDto> toDtoPage(Page<Book> page) {
+        return page.map(this::toDto);
     }
 
     @Transactional
-    public Book updateBook(UUID id, Book updatedBook) {
+    public BookDto createBook(Book book) {
+        Book saved = bookRepository.save(book);
+        return toDto(saved);
+    }
+
+    @Transactional
+    public BookDto updateBook(UUID id, Book updatedBook) {
         Book existing = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
         existing.setTitle(updatedBook.getTitle());
@@ -41,7 +63,8 @@ public class BookService {
         existing.setIsbn(updatedBook.getIsbn());
         existing.setGenre(updatedBook.getGenre());
         existing.setPageCount(updatedBook.getPageCount());
-        return bookRepository.save(existing);
+        Book saved = bookRepository.save(existing);
+        return toDto(saved);
     }
 
     @Transactional
@@ -51,30 +74,39 @@ public class BookService {
         bookRepository.delete(book);
     }
 
-    public Page<Book> getAllBooks(int page, int size) {
+    public Page<BookDto> getAllBooks(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return bookRepository.findAll(pageable);
+        return toDtoPage(bookRepository.findAll(pageable));
     }
 
-    public Book getBookById(UUID id) {
-        return bookRepository.findById(id)
+    public BookDto getBookById(UUID id) {
+        Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
+        return toDto(book);
     }
 
-    public List<Book> searchByTitle(String title) {
-        return bookRepository.findByTitleContainingIgnoreCase(title);
+    public List<BookDto> getBooksByGenre(BookGenre genre) {
+        return bookRepository.findByGenre(genre).stream().map(this::toDto).collect(Collectors.toList());
     }
 
-    public List<Book> searchByAuthor(String authorName) {
-        return bookRepository.findByAuthorsLastNameIgnoreCase(authorName);
+    public List<BookDto> getBooksByPublisher(String publisher) {
+        return bookRepository.findByPublisherIgnoreCase(publisher).stream().map(this::toDto).collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
-    public Page<Book> searchBooks(String title, BookGenre genre, String publisher,
-                                  Integer yearFrom, Integer yearTo, int page, int size) {
+    public List<BookDto> searchByTitle(String title) {
+        return bookRepository.findByTitleContainingIgnoreCase(title).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public List<BookDto> searchByAuthor(String authorName) {
+        return bookRepository.findByAuthorsLastNameIgnoreCase(authorName).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public Page<BookDto> searchBooks(String title, BookGenre genre, String publisher,
+                                     Integer yearFrom, Integer yearTo, int page, int size) {
         LocalDate from = yearFrom != null ? LocalDate.of(yearFrom, 1, 1) : null;
         LocalDate to = yearTo != null ? LocalDate.of(yearTo, 12, 31) : null;
         Pageable pageable = PageRequest.of(page, size);
-        return bookRepository.searchBooks(title, genre, publisher, from, to, pageable);
+        Page<Book> resultPage = bookRepository.searchBooks(title, genre, publisher, from, to, pageable);
+        return toDtoPage(resultPage);
     }
 }

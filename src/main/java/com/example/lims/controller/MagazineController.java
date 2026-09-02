@@ -1,5 +1,6 @@
 package com.example.lims.controller;
 
+import com.example.lims.dto.MagazineDto;
 import com.example.lims.enums.MagazineGenre;
 import com.example.lims.model.Magazine;
 import com.example.lims.service.MagazineService;
@@ -12,6 +13,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/magazines")
 public class MagazineController {
+
     private final MagazineService magazineService;
 
     public MagazineController(MagazineService magazineService) {
@@ -19,12 +21,12 @@ public class MagazineController {
     }
 
     @GetMapping("/{id}")
-    public Magazine getById(@PathVariable UUID id) {
+    public MagazineDto getById(@PathVariable UUID id) {
         return magazineService.getById(id);
     }
 
     @GetMapping
-    public Page<Magazine> getAll(
+    public Page<MagazineDto> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String title,
@@ -38,12 +40,12 @@ public class MagazineController {
     }
 
     @PostMapping
-    public Magazine create(@Valid @RequestBody Magazine magazine) {
+    public MagazineDto create(@Valid @RequestBody Magazine magazine) {
         return magazineService.create(magazine);
     }
 
     @PutMapping("/{id}")
-    public Magazine update(@PathVariable UUID id, @Valid @RequestBody Magazine magazine) {
+    public MagazineDto update(@PathVariable UUID id, @Valid @RequestBody Magazine magazine) {
         return magazineService.update(id, magazine);
     }
 

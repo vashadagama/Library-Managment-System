@@ -13,7 +13,6 @@ import java.util.UUID;
 
 @Repository
 public interface LoanRepository extends JpaRepository<Loan, UUID> {
-    List<Loan> findByStatus(LoanStatus status);
     List<Loan> findByUserId(UUID userId);
     List<Loan> findByCopyId(UUID copyId);
 
@@ -48,4 +47,7 @@ public interface LoanRepository extends JpaRepository<Loan, UUID> {
 
     @Query("SELECT COUNT(l) FROM Loan l WHERE l.returnDate > l.dueDate")
     long countOverdueReturns();
+
+    @Query("SELECT l.user.id, COUNT(l) FROM Loan l " + "WHERE l.status IN :statuses GROUP BY l.user.id")
+    List<Object[]> countActiveLoansByUser(@Param("statuses") List<LoanStatus> statuses);
 }

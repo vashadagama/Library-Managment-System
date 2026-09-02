@@ -1,5 +1,6 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.MagazineDto;
 import com.example.lims.enums.MagazineGenre;
 import com.example.lims.exception.ResourceNotFoundException;
 import com.example.lims.model.Magazine;
@@ -15,34 +16,57 @@ import java.util.UUID;
 @Service
 @Transactional(readOnly = true)
 public class MagazineService {
+
     private final MagazineRepository magazineRepository;
 
     public MagazineService(MagazineRepository magazineRepository) {
         this.magazineRepository = magazineRepository;
     }
 
-    public Magazine getById(UUID id) {
-        return magazineRepository.findById(id)
+    private MagazineDto toDto(Magazine magazine) {
+        return new MagazineDto(
+                magazine.getId(),
+                magazine.getTitle(),
+                magazine.getPublisher(),
+                magazine.getPublicationDate(),
+                magazine.getIssn(),
+                magazine.getLocation(),
+                magazine.getLanguage(),
+                magazine.getGenre(),
+                magazine.getPageCount(),
+                magazine.isHasGlossyCover()
+        );
+    }
+
+    private Page<MagazineDto> toDtoPage(Page<Magazine> page) {
+        return page.map(this::toDto);
+    }
+
+    public MagazineDto getById(UUID id) {
+        Magazine magazine = magazineRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Журнал не найден"));
+        return toDto(magazine);
     }
 
-    public Page<Magazine> getAll(int page, int size) {
-        return magazineRepository.findAll(PageRequest.of(page, size));
+    public Page<MagazineDto> getAll(int page, int size) {
+        return toDtoPage(magazineRepository.findAll(PageRequest.of(page, size)));
     }
 
-    public Page<Magazine> search(String title, MagazineGenre genre, String publisher, int page, int size) {
+    public Page<MagazineDto> search(String title, MagazineGenre genre, String publisher, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return magazineRepository.searchMagazines(title, genre, publisher, pageable);
+        Page<Magazine> resultPage = magazineRepository.searchMagazines(title, genre, publisher, pageable);
+        return toDtoPage(resultPage);
     }
 
     @Transactional
-    public Magazine create(Magazine magazine) {
-        return magazineRepository.save(magazine);
+    public MagazineDto create(Magazine magazine) {
+        Magazine saved = magazineRepository.save(magazine);
+        return toDto(saved);
     }
 
     @Transactional
-    public Magazine update(UUID id, Magazine updatedMagazine) {
-        Magazine existing = getById(id);
+    public MagazineDto update(UUID id, Magazine updatedMagazine) {
+        Magazine existing = getByIdEntity(id);
         existing.setTitle(updatedMagazine.getTitle());
         existing.setPublisher(updatedMagazine.getPublisher());
         existing.setPublicationDate(updatedMagazine.getPublicationDate());
@@ -52,12 +76,19 @@ public class MagazineService {
         existing.setGenre(updatedMagazine.getGenre());
         existing.setPageCount(updatedMagazine.getPageCount());
         existing.setHasGlossyCover(updatedMagazine.isHasGlossyCover());
-        return magazineRepository.save(existing);
+        Magazine saved = magazineRepository.save(existing);
+        return toDto(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
-        Magazine magazine = getById(id);
+        Magazine magazine = getByIdEntity(id);
         magazineRepository.delete(magazine);
+    }
+
+    // Метод для получения сущности
+    private Magazine getByIdEntity(UUID id) {
+        return magazineRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Журнал не найден"));
     }
 }

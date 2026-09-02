@@ -1,8 +1,8 @@
 package com.example.lims.controller;
 
+import com.example.lims.dto.BookDto;
 import com.example.lims.enums.BookGenre;
 import com.example.lims.model.Book;
-import com.example.lims.repository.BookRepository;
 import com.example.lims.service.BookService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -16,20 +16,18 @@ import java.util.UUID;
 public class BookController {
 
     private final BookService bookService;
-    private final BookRepository bookRepository;
 
-    public BookController(BookService bookService, BookRepository bookRepository) {
+    public BookController(BookService bookService) {
         this.bookService = bookService;
-        this.bookRepository = bookRepository;
     }
 
     @PostMapping
-    public Book create(@Valid @RequestBody Book book) {
+    public BookDto create(@Valid @RequestBody Book book) {
         return bookService.createBook(book);
     }
 
     @PutMapping("/{id}")
-    public Book update(@PathVariable UUID id, @Valid @RequestBody Book book) {
+    public BookDto update(@PathVariable UUID id, @Valid @RequestBody Book book) {
         return bookService.updateBook(id, book);
     }
 
@@ -39,7 +37,7 @@ public class BookController {
     }
 
     @GetMapping
-    public Page<Book> getBooks(
+    public Page<BookDto> getBooks(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
@@ -47,22 +45,22 @@ public class BookController {
     }
 
     @GetMapping("/{id}")
-    public Book getBookById(@PathVariable UUID id) {
+    public BookDto getBookById(@PathVariable UUID id) {
         return bookService.getBookById(id);
     }
 
     @GetMapping("/filter/genre")
-    public List<Book> getByGenre(@RequestParam com.example.lims.enums.BookGenre genre) {
-        return bookRepository.findByGenre(genre);
+    public List<BookDto> getByGenre(@RequestParam BookGenre genre) {
+        return bookService.getBooksByGenre(genre);
     }
 
     @GetMapping("/filter/publisher")
-    public List<Book> getByPublisher(@RequestParam String name) {
-        return bookRepository.findByPublisherIgnoreCase(name);
+    public List<BookDto> getByPublisher(@RequestParam String name) {
+        return bookService.getBooksByPublisher(name);
     }
 
     @GetMapping("/search")
-    public Page<Book> searchBooks(
+    public Page<BookDto> searchBooks(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) BookGenre genre,
             @RequestParam(required = false) String publisher,

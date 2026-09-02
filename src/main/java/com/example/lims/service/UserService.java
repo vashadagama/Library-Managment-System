@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -36,20 +37,15 @@ public class UserService {
     @Transactional(readOnly = true)
     public List<UserDto> getAllUsers() {
         List<User> users = userRepository.findAll();
+        Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
         return users.stream()
-                .map(user -> {
-                    long activeLoans = loanRepository.countByUserIdAndStatusIn(
-                            user.getId(),
-                            List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE)
-                    );
-                    return new UserDto(
-                            user.getId(),
-                            user.getFullName(),
-                            user.getEmail(),
-                            user.getRole(),
-                            (int) activeLoans
-                    );
-                })
+                .map(user -> new UserDto(
+                        user.getId(),
+                        user.getFullName(),
+                        user.getEmail(),
+                        user.getRole(),
+                        activeLoansMap.getOrDefault(user.getId(), 0L).intValue()
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -111,20 +107,26 @@ public class UserService {
     @Transactional(readOnly = true)
     public List<UserDto> searchUsers(String search) {
         List<User> users = userRepository.searchUsers(search);
+        Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
         return users.stream()
-                .map(user -> {
-                    long activeLoans = loanRepository.countByUserIdAndStatusIn(
-                            user.getId(),
-                            List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE)
-                    );
-                    return new UserDto(
-                            user.getId(),
-                            user.getFullName(),
-                            user.getEmail(),
-                            user.getRole(),
-                            (int) activeLoans
-                    );
-                })
+                .map(user -> new UserDto(
+                        user.getId(),
+                        user.getFullName(),
+                        user.getEmail(),
+                        user.getRole(),
+                        activeLoansMap.getOrDefault(user.getId(), 0L).intValue()
+                ))
                 .collect(Collectors.toList());
+    }
+
+    private Map<UUID, Long> getActiveLoansCountMap() {
+        List<Object[]> results = loanRepository.countActiveLoansByUser(
+                List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE)
+        );
+        return results.stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
     }
 }

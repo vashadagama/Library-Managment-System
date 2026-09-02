@@ -3,6 +3,7 @@ package com.example.lims.service;
 import com.example.lims.dto.PopularBookDto;
 import com.example.lims.enums.ItemStatus;
 import com.example.lims.enums.LoanStatus;
+import com.example.lims.enums.UserStatus;
 import com.example.lims.exception.BusinessLogicException;
 import com.example.lims.exception.ResourceNotFoundException;
 import com.example.lims.model.ItemCopy;
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.time.temporal.ChronoUnit.DAYS;
 
 @Service
 @Transactional
@@ -63,8 +66,7 @@ public class LoanService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
 
-        if (user.getStatus() == com.example.lims.enums.UserStatus.BLOCKED ||
-                user.getStatus() == com.example.lims.enums.UserStatus.FROZEN) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessLogicException("Выдача запрещена. Статус аккаунта: " + user.getStatus().getDisplayName());
         }
         return user;
@@ -93,16 +95,21 @@ public class LoanService {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Запись о выдаче не найдена"));
 
-        loan.returnItem();
-
-        if (loan.getReturnDate().isAfter(loan.getDueDate())) {
-            long daysOverdue = java.time.temporal.ChronoUnit.DAYS.between(loan.getDueDate(), loan.getReturnDate());
-            System.out.printf("Просрочка на %d дней. Штраф (заглушка): %.2f руб.%n", daysOverdue, daysOverdue * 10.0);
+        if (loan.getStatus() == LoanStatus.RETURNED) {
+            throw new BusinessLogicException("Эта выдача уже возвращена");
         }
+
+        loan.setReturnDate(LocalDate.now());
+        loan.setStatus(LoanStatus.RETURNED);
 
         ItemCopy copy = loan.getCopy();
         copy.setStatus(ItemStatus.AVAILABLE);
         itemCopyRepository.save(copy);
+
+        if (loan.getReturnDate().isAfter(loan.getDueDate())) {
+            long daysOverdue = DAYS.between(loan.getDueDate(), loan.getReturnDate());
+            System.out.printf("Просрочка на %d дней. Штраф (заглушка): %.2f руб.%n", daysOverdue, daysOverdue * 10.0);
+        }
 
         return loanRepository.save(loan);
     }
