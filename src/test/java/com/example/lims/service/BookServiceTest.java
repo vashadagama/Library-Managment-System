@@ -1,9 +1,12 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.BookCreateDto;
 import com.example.lims.dto.BookDto;
 import com.example.lims.enums.BookGenre;
 import com.example.lims.exception.ResourceNotFoundException;
+import com.example.lims.model.Author;
 import com.example.lims.model.Book;
+import com.example.lims.repository.AuthorRepository;
 import com.example.lims.repository.BookRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,8 +32,25 @@ class BookServiceTest {
     @Mock
     private BookRepository bookRepository;
 
+    @Mock
+    private AuthorRepository authorRepository;
+
     @InjectMocks
     private BookService bookService;
+
+    private BookCreateDto createTestDto() {
+        BookCreateDto dto = new BookCreateDto();
+        dto.setTitle("Test Book");
+        dto.setPublisher("Test Publisher");
+        dto.setPublicationDate(LocalDate.now());
+        dto.setIsbn("123-4567890");
+        dto.setLocation("A1");
+        dto.setLanguage("Russian");
+        dto.setGenre(BookGenre.FICTION);
+        dto.setPageCount(300);
+        dto.setAuthorIds(List.of(UUID.randomUUID()));
+        return dto;
+    }
 
     private Book createTestBook(UUID id) {
         Book book = new Book();
@@ -48,15 +68,19 @@ class BookServiceTest {
     @Test
     void createBook() {
         UUID id = UUID.randomUUID();
+        BookCreateDto dto = createTestDto();
         Book book = createTestBook(id);
+
+        when(authorRepository.findAllById(dto.getAuthorIds())).thenReturn(List.of(new Author()));
         when(bookRepository.save(any(Book.class))).thenReturn(book);
 
-        BookDto result = bookService.createBook(book);
+        BookDto result = bookService.createBook(dto);
 
         assertNotNull(result);
         assertEquals(id, result.getId());
         assertEquals("Test Book", result.getTitle());
-        verify(bookRepository, times(1)).save(book);
+        verify(bookRepository, times(1)).save(any(Book.class));
+        verify(authorRepository, times(1)).findAllById(dto.getAuthorIds());
     }
 
     @Test
@@ -127,17 +151,19 @@ class BookServiceTest {
     void updateBook() {
         UUID id = UUID.randomUUID();
         Book existing = createTestBook(id);
-        Book updated = createTestBook(id);
-        updated.setTitle("Updated Title");
+        BookCreateDto dto = createTestDto();
+        dto.setTitle("Updated Title");
 
         when(bookRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(authorRepository.findAllById(dto.getAuthorIds())).thenReturn(List.of(new Author()));
         when(bookRepository.save(any(Book.class))).thenReturn(existing);
 
-        BookDto result = bookService.updateBook(id, updated);
+        BookDto result = bookService.updateBook(id, dto);
 
         assertNotNull(result);
         assertEquals("Updated Title", result.getTitle());
         verify(bookRepository, times(1)).save(existing);
+        verify(authorRepository, times(1)).findAllById(dto.getAuthorIds());
     }
 
     @Test

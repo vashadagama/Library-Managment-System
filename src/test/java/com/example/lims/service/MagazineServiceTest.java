@@ -1,5 +1,6 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.MagazineCreateDto;
 import com.example.lims.dto.MagazineDto;
 import com.example.lims.enums.MagazineGenre;
 import com.example.lims.exception.ResourceNotFoundException;
@@ -32,6 +33,20 @@ class MagazineServiceTest {
     @InjectMocks
     private MagazineService magazineService;
 
+    private MagazineCreateDto createTestDto() {
+        MagazineCreateDto dto = new MagazineCreateDto();
+        dto.setTitle("Test Magazine");
+        dto.setPublisher("Test Publisher");
+        dto.setPublicationDate(LocalDate.now());
+        dto.setIssn("1234-5678");
+        dto.setLocation("Test Location");
+        dto.setLanguage("Russian");
+        dto.setGenre(MagazineGenre.POPULAR_SCIENTIFIC);
+        dto.setPageCount(100);
+        dto.setHasGlossyCover(true);
+        return dto;
+    }
+
     private Magazine createTestMagazine(UUID id) {
         Magazine mag = new Magazine();
         mag.setTitle("Test Magazine");
@@ -49,15 +64,17 @@ class MagazineServiceTest {
     @Test
     void create() {
         UUID id = UUID.randomUUID();
+        MagazineCreateDto dto = createTestDto();
         Magazine mag = createTestMagazine(id);
+
         when(magazineRepository.save(any(Magazine.class))).thenReturn(mag);
 
-        MagazineDto result = magazineService.create(mag);
+        MagazineDto result = magazineService.create(dto);
 
         assertNotNull(result);
         assertEquals(id, result.getId());
         assertEquals("Test Magazine", result.getTitle());
-        verify(magazineRepository, times(1)).save(mag);
+        verify(magazineRepository, times(1)).save(any(Magazine.class));
     }
 
     @Test
@@ -110,20 +127,20 @@ class MagazineServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        assertEquals(id, result.getContent().get(0).getId());
+        assertEquals(id, result.getContent().getFirst().getId());
     }
 
     @Test
     void update() {
         UUID id = UUID.randomUUID();
         Magazine existing = createTestMagazine(id);
-        Magazine updated = createTestMagazine(id);
-        updated.setTitle("Updated Title");
+        MagazineCreateDto dto = createTestDto();
+        dto.setTitle("Updated Title");
 
         when(magazineRepository.findById(id)).thenReturn(Optional.of(existing));
         when(magazineRepository.save(any(Magazine.class))).thenReturn(existing);
 
-        MagazineDto result = magazineService.update(id, updated);
+        MagazineDto result = magazineService.update(id, dto);
 
         assertNotNull(result);
         assertEquals("Updated Title", result.getTitle());

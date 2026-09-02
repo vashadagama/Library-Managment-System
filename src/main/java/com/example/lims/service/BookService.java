@@ -1,9 +1,12 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.BookCreateDto;
 import com.example.lims.dto.BookDto;
 import com.example.lims.enums.BookGenre;
 import com.example.lims.exception.ResourceNotFoundException;
+import com.example.lims.model.Author;
 import com.example.lims.model.Book;
+import com.example.lims.repository.AuthorRepository;
 import com.example.lims.repository.BookRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,9 +24,11 @@ import java.util.stream.Collectors;
 public class BookService {
 
     private final BookRepository bookRepository;
+    private final AuthorRepository authorRepository;
 
-    public BookService(BookRepository bookRepository) {
+    public BookService(BookRepository bookRepository, AuthorRepository authorRepository) {
         this.bookRepository = bookRepository;
+        this.authorRepository = authorRepository;
     }
 
     private BookDto toDto(Book book) {
@@ -46,23 +51,51 @@ public class BookService {
     }
 
     @Transactional
-    public BookDto createBook(Book book) {
+    public BookDto createBook(BookCreateDto dto) {
+        Book book = new Book();
+        book.setTitle(dto.getTitle());
+        book.setPublisher(dto.getPublisher());
+        book.setPublicationDate(dto.getPublicationDate());
+        book.setIsbn(dto.getIsbn());
+        book.setLocation(dto.getLocation());
+        book.setLanguage(dto.getLanguage());
+        book.setGenre(dto.getGenre());
+        book.setPageCount(dto.getPageCount());
+
+        // Привязка авторов
+        if (dto.getAuthorIds() != null) {
+            List<Author> authors = authorRepository.findAllById(dto.getAuthorIds());
+            for (Author author : authors) {
+                book.addAuthor(author);
+            }
+        }
+
         Book saved = bookRepository.save(book);
         return toDto(saved);
     }
 
     @Transactional
-    public BookDto updateBook(UUID id, Book updatedBook) {
+    public BookDto updateBook(UUID id, BookCreateDto dto) {
         Book existing = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
-        existing.setTitle(updatedBook.getTitle());
-        existing.setPublisher(updatedBook.getPublisher());
-        existing.setPublicationDate(updatedBook.getPublicationDate());
-        existing.setLocation(updatedBook.getLocation());
-        existing.setLanguage(updatedBook.getLanguage());
-        existing.setIsbn(updatedBook.getIsbn());
-        existing.setGenre(updatedBook.getGenre());
-        existing.setPageCount(updatedBook.getPageCount());
+
+        existing.setTitle(dto.getTitle());
+        existing.setPublisher(dto.getPublisher());
+        existing.setPublicationDate(dto.getPublicationDate());
+        existing.setIsbn(dto.getIsbn());
+        existing.setLocation(dto.getLocation());
+        existing.setLanguage(dto.getLanguage());
+        existing.setGenre(dto.getGenre());
+        existing.setPageCount(dto.getPageCount());
+
+        if (dto.getAuthorIds() != null) {
+            existing.getAuthors().clear();
+            List<Author> authors = authorRepository.findAllById(dto.getAuthorIds());
+            for (Author author : authors) {
+                existing.addAuthor(author);
+            }
+        }
+
         Book saved = bookRepository.save(existing);
         return toDto(saved);
     }

@@ -1,8 +1,8 @@
 package com.example.lims.controller;
 
+import com.example.lims.dto.MagazineCreateDto;
 import com.example.lims.dto.MagazineDto;
 import com.example.lims.enums.MagazineGenre;
-import com.example.lims.model.Magazine;
 import com.example.lims.service.MagazineService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -40,13 +40,13 @@ public class MagazineController {
     }
 
     @PostMapping
-    public MagazineDto create(@Valid @RequestBody Magazine magazine) {
-        return magazineService.create(magazine);
+    public MagazineDto create(@Valid @RequestBody MagazineCreateDto dto) {
+        return magazineService.create(dto);
     }
 
     @PutMapping("/{id}")
-    public MagazineDto update(@PathVariable UUID id, @Valid @RequestBody Magazine magazine) {
-        return magazineService.update(id, magazine);
+    public MagazineDto update(@PathVariable UUID id, @Valid @RequestBody MagazineCreateDto dto) {
+        return magazineService.update(id, dto);
     }
 
     @DeleteMapping("/{id}")

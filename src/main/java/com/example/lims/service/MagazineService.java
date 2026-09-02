@@ -1,5 +1,6 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.MagazineCreateDto;
 import com.example.lims.dto.MagazineDto;
 import com.example.lims.enums.MagazineGenre;
 import com.example.lims.exception.ResourceNotFoundException;
@@ -59,23 +60,34 @@ public class MagazineService {
     }
 
     @Transactional
-    public MagazineDto create(Magazine magazine) {
+    public MagazineDto create(MagazineCreateDto dto) {
+        Magazine magazine = new Magazine(
+                dto.getTitle(),
+                dto.getPublisher(),
+                dto.getPublicationDate(),
+                dto.getIssn(),
+                dto.getLocation(),
+                dto.getLanguage(),
+                dto.getGenre(),
+                dto.getPageCount(),
+                dto.isHasGlossyCover()
+        );
         Magazine saved = magazineRepository.save(magazine);
         return toDto(saved);
     }
 
     @Transactional
-    public MagazineDto update(UUID id, Magazine updatedMagazine) {
+    public MagazineDto update(UUID id, MagazineCreateDto dto) {
         Magazine existing = getByIdEntity(id);
-        existing.setTitle(updatedMagazine.getTitle());
-        existing.setPublisher(updatedMagazine.getPublisher());
-        existing.setPublicationDate(updatedMagazine.getPublicationDate());
-        existing.setLocation(updatedMagazine.getLocation());
-        existing.setLanguage(updatedMagazine.getLanguage());
-        existing.setIssn(updatedMagazine.getIssn());
-        existing.setGenre(updatedMagazine.getGenre());
-        existing.setPageCount(updatedMagazine.getPageCount());
-        existing.setHasGlossyCover(updatedMagazine.isHasGlossyCover());
+        existing.setTitle(dto.getTitle());
+        existing.setPublisher(dto.getPublisher());
+        existing.setPublicationDate(dto.getPublicationDate());
+        existing.setIssn(dto.getIssn());
+        existing.setLocation(dto.getLocation());
+        existing.setLanguage(dto.getLanguage());
+        existing.setGenre(dto.getGenre());
+        existing.setPageCount(dto.getPageCount());
+        existing.setHasGlossyCover(dto.isHasGlossyCover());
         Magazine saved = magazineRepository.save(existing);
         return toDto(saved);
     }
@@ -86,7 +98,6 @@ public class MagazineService {
         magazineRepository.delete(magazine);
     }
 
-    // Метод для получения сущности
     private Magazine getByIdEntity(UUID id) {
         return magazineRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Журнал не найден"));

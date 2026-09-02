@@ -1,8 +1,8 @@
 package com.example.lims.controller;
 
+import com.example.lims.dto.BookCreateDto;
 import com.example.lims.dto.BookDto;
 import com.example.lims.enums.BookGenre;
-import com.example.lims.model.Book;
 import com.example.lims.service.BookService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -22,13 +22,13 @@ public class BookController {
     }
 
     @PostMapping
-    public BookDto create(@Valid @RequestBody Book book) {
-        return bookService.createBook(book);
+    public BookDto create(@Valid @RequestBody BookCreateDto dto) {
+        return bookService.createBook(dto);
     }
 
     @PutMapping("/{id}")
-    public BookDto update(@PathVariable UUID id, @Valid @RequestBody Book book) {
-        return bookService.updateBook(id, book);
+    public BookDto update(@PathVariable UUID id, @Valid @RequestBody BookCreateDto dto) {
+        return bookService.updateBook(id, dto);
     }
 
     @DeleteMapping("/{id}")
