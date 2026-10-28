@@ -31,4 +31,14 @@ public class AuthorController {
     public Author getById(@PathVariable UUID id) {
         return authorService.getAuthorById(id);
     }
+
+    @PutMapping("/{id}")
+    public Author update(@PathVariable UUID id, @Valid @RequestBody Author author) {
+        return authorService.updateAuthor(id, author);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable UUID id) {
+        authorService.deleteAuthor(id);
+    }
 }

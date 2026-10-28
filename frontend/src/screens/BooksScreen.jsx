@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getBooks, deleteBook, searchBooks } from '../api/books';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const BooksScreen = () => {
   const [books, setBooks] = useState([]);
@@ -18,7 +19,7 @@ const BooksScreen = () => {
       setBooks(res.data.content);
       setTotalPages(res.data.totalPages);
     }).catch(err => {
-      console.error('Ошибка загрузки книг:', err);
+      toast.error('Ошибка загрузки книг: ' + (err.response?.data?.message || err.message));
     });
   };
 
@@ -26,8 +27,13 @@ const BooksScreen = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Удалить книгу?')) {
-      await deleteBook(id);
-      fetchBooks();
+      try {
+        await deleteBook(id);
+        toast.success('Книга удалена');
+        fetchBooks();
+      } catch (err) {
+        toast.error('Ошибка удаления: ' + (err.response?.data?.message || err.message));
+      }
     }
   };
 

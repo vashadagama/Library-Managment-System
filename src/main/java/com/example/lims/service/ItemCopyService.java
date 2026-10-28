@@ -67,9 +67,8 @@ public class ItemCopyService {
 
     public ItemCopy updateStatus(UUID id, ItemStatus newStatus) {
         ItemCopy copy = getById(id);
-
-        if (copy.getStatus() == ItemStatus.BORROVED && newStatus != ItemStatus.AVAILABLE) {
-            throw new BusinessLogicException("Нельзя изменить статус выданного экземпляра, кроме как на AVAILABLE (возврат)");
+        if (copy.getStatus() == ItemStatus.BORROVED && newStatus == ItemStatus.AVAILABLE) {
+            throw new BusinessLogicException("Нельзя вручную установить статус AVAILABLE для выданного экземпляра. Используйте возврат книги.");
         }
 
         copy.setStatus(newStatus);

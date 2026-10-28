@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSummaryStatistics, getOverdueLoans } from '../api/statistics';
 import { searchBooks } from '../api/books';
+import { getMagazines } from '../api/magazines'; // добавим
+import { searchReaders } from '../api/readers';  // добавим
 
 const Dashboard = () => {
   const [stats, setStats] = useState({});
@@ -25,14 +27,37 @@ const Dashboard = () => {
     }
     const timer = setTimeout(() => {
       setLoadingFast(true);
-      const params = { title: searchTerm.trim(), size: 3, page: 0 };
-      searchBooks(params)
-        .then(res => setFastResults(res.data.content))
-        .catch(() => setFastResults([]))
-        .finally(() => setLoadingFast(false));
+      const term = searchTerm.trim();
+
+      if (searchType === 'book') {
+        const params = { title: term, size: 3, page: 0 };
+        searchBooks(params)
+          .then(res => {
+            // Для книг в ответе объект с полем content
+            setFastResults(res.data.content || []);
+          })
+          .catch(() => setFastResults([]))
+          .finally(() => setLoadingFast(false));
+      } else if (searchType === 'magazine') {
+        // Для журналов используем getMagazines с фильтром по title
+        getMagazines(0, 3, { title: term })
+          .then(res => {
+            setFastResults(res.data.content || []);
+          })
+          .catch(() => setFastResults([]))
+          .finally(() => setLoadingFast(false));
+      } else if (searchType === 'reader') {
+        searchReaders(term)
+          .then(res => {
+            // searchReaders возвращает массив читателей
+            setFastResults(res.data || []);
+          })
+          .catch(() => setFastResults([]))
+          .finally(() => setLoadingFast(false));
+      }
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, searchType]);
 
   const handleShowAll = () => {
     const query = encodeURIComponent(searchTerm.trim());
@@ -40,9 +65,48 @@ const Dashboard = () => {
       navigate(`/catalog?type=books&search=${query}`);
     } else if (searchType === 'magazine') {
       navigate(`/catalog?type=magazines&search=${query}`);
-    } else {
+    } else if (searchType === 'reader') {
       navigate(`/readers?search=${query}`);
     }
+  };
+
+  // Функция для отображения результатов в зависимости от типа
+  const renderResultItem = (item) => {
+    if (searchType === 'book') {
+      return (
+        <tr key={item.id}>
+          <td>{item.title}</td>
+          <td>{item.authors?.map(a => `${a.lastName} ${a.firstName}`).join(', ') || '—'}</td>
+        </tr>
+      );
+    } else if (searchType === 'magazine') {
+      return (
+        <tr key={item.id}>
+          <td>{item.title}</td>
+          <td>{item.publisher || '—'}</td>
+        </tr>
+      );
+    } else if (searchType === 'reader') {
+      return (
+        <tr key={item.id}>
+          <td>{item.fullName}</td>
+          <td>{item.email}</td>
+        </tr>
+      );
+    }
+    return null;
+  };
+
+  // Заголовки таблицы в зависимости от типа
+  const getTableHeaders = () => {
+    if (searchType === 'book') {
+      return <tr><th>Название</th><th>Авторы</th></tr>;
+    } else if (searchType === 'magazine') {
+      return <tr><th>Название</th><th>Издатель</th></tr>;
+    } else if (searchType === 'reader') {
+      return <tr><th>ФИО</th><th>Email</th></tr>;
+    }
+    return null;
   };
 
   return (
@@ -90,29 +154,18 @@ const Dashboard = () => {
             {!loadingFast && fastResults.length > 0 && (
               <>
                 <table style={{ marginBottom: '8px' }}>
-                  <thead>
-                    <tr>
-                      <th>Название</th>
-                      <th>Автор / Издатель</th>
-                    </tr>
-                  </thead>
+                  <thead>{getTableHeaders()}</thead>
                   <tbody>
-                    {fastResults.map(item => (
-                      <tr key={item.id}>
-                        <td>{item.title}</td>
-                        <td>
-                          {searchType === 'book'
-                            ? (item.authors?.map(a => `${a.lastName} ${a.firstName}`).join(', ') || '—')
-                            : (item.publisher || '—')}
-                        </td>
-                      </tr>
-                    ))}
+                    {fastResults.map(item => renderResultItem(item))}
                   </tbody>
                 </table>
                 <button onClick={handleShowAll} style={{ background: 'var(--accent)', color: 'white', marginTop: '8px' }}>
                   Показать все результаты →
                 </button>
               </>
+            )}
+            {!loadingFast && fastResults.length === 0 && searchTerm.trim().length >= 2 && (
+              <p>Ничего не найдено</p>
             )}
           </div>
         )}

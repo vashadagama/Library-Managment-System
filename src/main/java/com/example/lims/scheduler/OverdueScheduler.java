@@ -3,6 +3,8 @@ package com.example.lims.scheduler;
 import com.example.lims.enums.LoanStatus;
 import com.example.lims.model.Loan;
 import com.example.lims.repository.LoanRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +13,8 @@ import java.util.List;
 
 @Component
 public class OverdueScheduler {
+
+    private static final Logger logger = LoggerFactory.getLogger(OverdueScheduler.class);
 
     private final LoanRepository loanRepository;
 
@@ -27,7 +31,7 @@ public class OverdueScheduler {
         }
         loanRepository.saveAll(expiredLoans);
         if (!expiredLoans.isEmpty()) {
-            System.out.println("Обновлён статус OVERDUE для " + expiredLoans.size() + " выдач.");
+            logger.info("Обновлён статус OVERDUE для {} выдач.", expiredLoans.size());
         }
     }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createBook, getBook, updateBook } from '../api/books';
+import { toast } from 'react-toastify';
 
 const BookForm = () => {
   const { id } = useParams();
@@ -41,12 +42,14 @@ const BookForm = () => {
     try {
       if (id) {
         await updateBook(id, form);
+        toast.success('Книга обновлена');
       } else {
         await createBook(form);
+        toast.success('Книга создана');
       }
       navigate('/catalog?type=books');
     } catch (err) {
-      alert('Ошибка сохранения: ' + (err.response?.data?.message || err.message));
+      toast.error('Ошибка сохранения: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import api from './axios';
 
-export const getReaders = () => api.get('/users');
+export const getReaders = (page = 0, size = 10) =>
+  api.get('/users', { params: { page, size } });
 
 export const createReader = (data) => api.post('/users', data);
 

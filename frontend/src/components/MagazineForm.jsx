@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createMagazine, getMagazine, updateMagazine } from '../api/magazines';
+import { toast } from 'react-toastify';
 
 const MagazineForm = () => {
   const { id } = useParams();
@@ -43,12 +44,14 @@ const MagazineForm = () => {
     try {
       if (id) {
         await updateMagazine(id, form);
+        toast.success('Журнал обновлён');
       } else {
         await createMagazine(form);
+        toast.success('Журнал создан');
       }
       navigate('/catalog?type=magazines');
     } catch (err) {
-      alert('Ошибка: ' + (err.response?.data?.message || err.message));
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }

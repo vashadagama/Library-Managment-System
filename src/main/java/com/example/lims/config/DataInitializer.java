@@ -3,13 +3,18 @@ package com.example.lims.config;
 import com.example.lims.enums.*;
 import com.example.lims.model.*;
 import com.example.lims.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
 import java.time.LocalDate;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
+
+    private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
 
     private final AuthorRepository authorRepository;
     private final BookRepository bookRepository;
@@ -33,13 +38,13 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         if (userRepository.count() > 0) {
-            System.out.println("База данных уже содержит пользователей. Пропускаем инициализацию.");
+            logger.info("База данных уже содержит пользователей. Пропускаем инициализацию.");
             return;
         }
 
-        System.out.println("Начинаем заполнение базы тестовыми данными...");
+        logger.info("Начинаем заполнение базы тестовыми данными...");
 
         // ========== АВТОРЫ (7) ==========
         Author author1 = new Author("Джоан", "Роулинг", "Кэтлин");
@@ -218,6 +223,6 @@ public class DataInitializer implements CommandLineRunner {
 
         loanRepository.saveAll(java.util.List.of(loan1, loan2, loan3, loan4, loan5));
 
-        System.out.println("Тестовые данные успешно загружены!");
+        logger.info("Тестовые данные успешно загружены!");
     }
 }

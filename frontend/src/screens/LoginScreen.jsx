@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
@@ -13,14 +14,17 @@ const LoginScreen = () => {
     e.preventDefault();
     setError('');
     if (!email || !password) {
-      setError('Заполните все поля');
+      toast.warning('Заполните все поля');
       return;
     }
     try {
       await login(email, password);
+      toast.success('Вход выполнен');
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Ошибка входа. Проверьте данные.');
+      const msg = err.response?.data?.message || 'Ошибка входа. Проверьте данные.';
+      setError(msg);
+      toast.error(msg);
     }
   };
 

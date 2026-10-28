@@ -1,32 +1,70 @@
 import { useState, useEffect } from 'react';
 import { getReaders, createReader, changeUserStatus, updateMaxLoans, searchReaders } from '../api/readers';
+import { toast } from 'react-toastify';
 
 const ReadersScreen = () => {
   const [readers, setReaders] = useState([]);
   const [search, setSearch] = useState('');
   const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '' });
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const fetchReaders = () => {
-    const apiCall = search ? searchReaders(search) : getReaders();
-    apiCall.then(res => setReaders(res.data)).catch(err => console.error(err));
+  const fetchReaders = async () => {
+    setLoading(true);
+    try {
+      let res;
+      if (search.trim()) {
+        res = await searchReaders(search);
+        setReaders(res.data);
+        setTotalPages(1);
+      } else {
+        res = await getReaders(page, 10);
+        setReaders(res.data.content);
+        setTotalPages(res.data.totalPages);
+      }
+    } catch (err) {
+      toast.error('Ошибка загрузки читателей');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchReaders(); }, [search]);
+  useEffect(() => { fetchReaders(); }, [page, search]);
 
   const handleCreate = async () => {
-    await createReader({ ...newUser, role: 'READER' });
-    setNewUser({ firstName: '', lastName: '', email: '' });
-    fetchReaders();
+    if (!newUser.firstName || !newUser.lastName || !newUser.email) {
+      toast.warning('Заполните все поля');
+      return;
+    }
+    try {
+      await createReader({ ...newUser, role: 'READER' });
+      toast.success('Читатель создан');
+      setNewUser({ firstName: '', lastName: '', email: '' });
+      fetchReaders();
+    } catch (err) {
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleStatus = async (id, status) => {
-    await changeUserStatus(id, status);
-    fetchReaders();
+    try {
+      await changeUserStatus(id, status);
+      toast.success('Статус обновлён');
+      fetchReaders();
+    } catch (err) {
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleMaxLoans = async (id, max) => {
-    await updateMaxLoans(id, max);
-    fetchReaders();
+    try {
+      await updateMaxLoans(id, max);
+      toast.success('Лимит обновлён');
+      fetchReaders();
+    } catch (err) {
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   return (
@@ -88,6 +126,18 @@ const ReadersScreen = () => {
             ))}
           </tbody>
         </table>
+        {loading && <p>Загрузка...</p>}
+      </div>
+
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '10px',
+        marginTop: '20px'
+      }}>
+        <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Назад</button>
+        <span style={{ alignSelf: 'center' }}>Страница {page + 1} из {totalPages}</span>
+        <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Вперёд →</button>
       </div>
     </div>
   );

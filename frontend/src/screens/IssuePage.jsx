@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { getBook, getBookCopies } from '../api/books';
+import { getBook } from '../api/books';
 import { getMagazine } from '../api/magazines';
 import { issueByLibraryItem } from '../api/loans';
+import { toast } from 'react-toastify';
 
 const IssuePage = () => {
   const { itemId } = useParams();
@@ -12,7 +13,6 @@ const IssuePage = () => {
 
   const [item, setItem] = useState(null);
   const [userId, setUserId] = useState('');
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -25,7 +25,7 @@ const IssuePage = () => {
           setItem(res.data);
         }
       } catch (err) {
-        console.error('Ошибка загрузки издания:', err);
+        toast.error('Ошибка загрузки издания');
       }
     };
     fetchItem();
@@ -33,17 +33,16 @@ const IssuePage = () => {
 
   const handleIssue = async () => {
     if (!userId.trim()) {
-      setMessage('Введите ID читателя');
+      toast.warning('Введите ID читателя');
       return;
     }
     try {
       await issueByLibraryItem(userId.trim(), itemId);
-      setMessage('✅ Издание успешно выдано!');
+      toast.success('Издание успешно выдано!');
       setUserId('');
-      // через 2 секунды можно вернуться на каталог
       setTimeout(() => navigate(-1), 2000);
     } catch (err) {
-      setMessage('❌ Ошибка: ' + (err.response?.data?.message || err.message));
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -75,7 +74,6 @@ const IssuePage = () => {
           />
         </div>
         <button onClick={handleIssue} style={{ marginTop: '10px' }}>Выдать</button>
-        {message && <p style={{ marginTop: '10px' }}>{message}</p>}
         <p style={{ marginTop: '10px', fontSize: '12px', color: 'gray' }}>
           ID читателя можно найти на странице «Читатели».
         </p>

@@ -13,6 +13,9 @@ import StatisticsScreen from './screens/StatisticsScreen';
 import IssuePage from './screens/IssuePage';
 import BookForm from './components/BookForm';
 import MagazineForm from './components/MagazineForm';
+import NotFound from './components/NotFound';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const App = () => {
   return (
@@ -20,6 +23,9 @@ const App = () => {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginScreen />} />
+
+          <Route path="/issue/:itemId" element={<PrivateRoute><IssuePage /></PrivateRoute>} />
+
           <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/catalog" element={<CatalogScreen />} />
@@ -33,8 +39,10 @@ const App = () => {
             <Route path="/magazines/new" element={<MagazineForm />} />
             <Route path="/magazines/edit/:id" element={<MagazineForm />} />
           </Route>
-          <Route path="/issue/:itemId" element={<IssuePage />} />
+
+          <Route path="*" element={<NotFound />} />
         </Routes>
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
       </AuthProvider>
     </BrowserRouter>
   );

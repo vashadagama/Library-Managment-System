@@ -8,14 +8,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.util.UUID;
 
 @Repository
 public interface MagazineRepository extends JpaRepository<Magazine, UUID> {
+
     @Query("SELECT m FROM Magazine m WHERE " +
-            "(:title IS NULL OR m.title ILIKE CONCAT('%', CAST(:title AS string), '%')) AND " +
+            "(:title IS NULL OR m.title ILIKE CONCAT('%', :title, '%')) AND " +
             "(:genre IS NULL OR m.genre = :genre) AND " +
-            "(:publisher IS NULL OR m.publisher ILIKE CONCAT('%', CAST(:publisher AS string), '%'))")
+            "(:publisher IS NULL OR m.publisher ILIKE CONCAT('%', :publisher, '%'))")
     Page<Magazine> searchMagazines(@Param("title") String title,
                                    @Param("genre") MagazineGenre genre,
                                    @Param("publisher") String publisher,

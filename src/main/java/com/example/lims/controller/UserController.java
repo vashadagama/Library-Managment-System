@@ -6,6 +6,7 @@ import com.example.lims.enums.UserStatus;
 import jakarta.validation.Valid;
 import com.example.lims.model.User;
 import com.example.lims.service.UserService;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,8 +23,11 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserDto> getUsers() {
-        return userService.getAllUsers();
+    public Page<UserDto> getUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return userService.getAllUsers(page, size);
     }
 
     @PostMapping

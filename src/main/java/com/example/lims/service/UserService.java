@@ -10,6 +10,9 @@ import com.example.lims.exception.ResourceNotFoundException;
 import com.example.lims.model.User;
 import com.example.lims.repository.LoanRepository;
 import com.example.lims.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +38,21 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserDto> getAllUsers() {
+    public Page<UserDto> getAllUsers(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> users = userRepository.findAll(pageable);
+        Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
+        return users.map(user -> new UserDto(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole(),
+                activeLoansMap.getOrDefault(user.getId(), 0L).intValue()
+        ));
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDto> getAllUsersList() {
         List<User> users = userRepository.findAll();
         Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
         return users.stream()

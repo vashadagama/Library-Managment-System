@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getOverdueLoans, renewLoan, returnBook, getActiveLoansByUser } from '../api/loans';
+import { toast } from 'react-toastify';
 
 const LoansScreen = () => {
   const [overdue, setOverdue] = useState([]);
@@ -18,14 +19,23 @@ const LoansScreen = () => {
   useEffect(() => { fetchData(); }, [userId]);
 
   const handleReturn = async (loanId) => {
-    await returnBook(loanId);
-    fetchData();
+    try {
+      await returnBook(loanId);
+      toast.success('Книга возвращена');
+      fetchData();
+    } catch (err) {
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleRenew = async (loanId) => {
-    await renewLoan(loanId, 14);
-    alert('Продлено');
-    fetchData();
+    try {
+      await renewLoan(loanId, 14);
+      toast.success('Срок продлён');
+      fetchData();
+    } catch (err) {
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   return (

@@ -4,7 +4,7 @@ public enum UserStatus {
     ACTIVE ("Может брать книги"),
     FROZEN ("Аккаунт заморожен"),
     BLOCKED ("Аккаунт заблокирован"),
-    DELITED ("Удален");
+    DELETED ("Удален");
 
     private final String displayName;
 

@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getMagazine, getMagazineCopies, addCopy, updateCopyStatus } from '../api/magazines';
 import { issueByCopy } from '../api/loans';
+import { toast } from 'react-toastify';
 
 const MagazineDetailScreen = () => {
   const { id } = useParams();
@@ -18,23 +19,42 @@ const MagazineDetailScreen = () => {
   useEffect(() => { fetchData(); }, [id]);
 
   const handleAddCopy = async () => {
-    await addCopy({ libraryItemId: id, inventoryNumber: invNumber });
-    setInvNumber('');
-    fetchData();
+    if (!invNumber.trim()) {
+      toast.warning('Введите инвентарный номер');
+      return;
+    }
+    try {
+      await addCopy({ libraryItemId: id, inventoryNumber: invNumber.trim() });
+      toast.success('Экземпляр добавлен');
+      setInvNumber('');
+      fetchData();
+    } catch (err) {
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleStatusChange = async (copyId, status) => {
-    await updateCopyStatus(copyId, status);
-    fetchData();
+    try {
+      await updateCopyStatus(copyId, status);
+      toast.success('Статус обновлён');
+      fetchData();
+    } catch (err) {
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleIssue = async (copyId) => {
+    if (!userId.trim()) {
+      toast.warning('Введите ID читателя');
+      return;
+    }
     try {
-      await issueByCopy(userId, copyId);
-      alert('Выдано');
+      await issueByCopy(userId.trim(), copyId);
+      toast.success('Журнал выдан');
       fetchData();
+      setUserId('');
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
     }
   };
 
