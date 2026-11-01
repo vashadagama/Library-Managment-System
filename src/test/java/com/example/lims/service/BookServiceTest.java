@@ -2,227 +2,127 @@ package com.example.lims.service;
 
 import com.example.lims.dto.BookCreateDto;
 import com.example.lims.dto.BookDto;
-import com.example.lims.enums.BookGenre;
+import com.example.lims.entity.Location;
+import com.example.lims.entity.Publisher;
+import com.example.lims.entity.item.Author;
+import com.example.lims.entity.item.Book;
+import com.example.lims.entity.status.Genre;
+import com.example.lims.entity.status.Language;
 import com.example.lims.exception.ResourceNotFoundException;
-import com.example.lims.model.Author;
-import com.example.lims.model.Book;
 import com.example.lims.repository.AuthorRepository;
 import com.example.lims.repository.BookRepository;
+import com.example.lims.repository.GenreRepository;
+import com.example.lims.repository.LanguageRepository;
+import com.example.lims.repository.LocationRepository;
+import com.example.lims.repository.PublisherRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BookServiceTest {
 
-    @Mock
-    private BookRepository bookRepository;
+    @Mock private BookRepository bookRepository;
+    @Mock private AuthorRepository authorRepository;
+    @Mock private GenreRepository genreRepository;
+    @Mock private PublisherRepository publisherRepository;
+    @Mock private LanguageRepository languageRepository;
+    @Mock private LocationRepository locationRepository;
 
-    @Mock
-    private AuthorRepository authorRepository;
+    @InjectMocks private BookService bookService;
 
-    @InjectMocks
-    private BookService bookService;
-
-    private BookCreateDto createTestDto() {
-        BookCreateDto dto = new BookCreateDto();
-        dto.setTitle("Test Book");
-        dto.setPublisher("Test Publisher");
-        dto.setPublicationDate(LocalDate.now());
-        dto.setIsbn("123-4567890");
-        dto.setLocation("A1");
-        dto.setLanguage("Russian");
-        dto.setGenre(BookGenre.FICTION);
-        dto.setPageCount(300);
-        dto.setAuthorIds(List.of(UUID.randomUUID()));
-        return dto;
+    private static Genre genre(UUID id) {
+        Genre genre = new Genre();
+        genre.setId(id);
+        genre.setName("FICTION");
+        return genre;
     }
 
-    private Book createTestBook(UUID id) {
-        Book book = new Book();
-        book.setTitle("Test Book");
-        book.setPublisher("Test Publisher");
-        book.setPublicationDate(LocalDate.now());
-        book.setIsbn("123-4567890");
-        book.setLocation("A1");
-        book.setLanguage("Russian");
-        book.setGenre(BookGenre.FICTION);
-        book.setPageCount(300);
-        return book;
+    private static Language language(UUID id) {
+        Language language = new Language();
+        language.setId(id);
+        language.setName("Русский");
+        return language;
     }
 
     @Test
-    void createBook() {
-        UUID id = UUID.randomUUID();
-        BookCreateDto dto = createTestDto();
-        Book book = createTestBook(id);
+    void createBookResolvesClassifiersAndAuthors() {
+        UUID genreId = UUID.randomUUID();
+        UUID languageId = UUID.randomUUID();
+        UUID publisherId = UUID.randomUUID();
+        UUID authorId = UUID.randomUUID();
+        Publisher publisher = new Publisher();
+        publisher.setId(publisherId);
+        publisher.setName("Издательство");
+        Author author = new Author("Иван", "Иванов", null);
+        author.setId(authorId);
 
-        when(authorRepository.findAllById(dto.getAuthorIds())).thenReturn(List.of(new Author()));
-        when(bookRepository.save(any(Book.class))).thenReturn(book);
+        BookCreateDto dto = new BookCreateDto();
+        dto.setTitle("Книга");
+        dto.setPublicationDate(LocalDate.of(2020, 1, 1));
+        dto.setGenreId(genreId);
+        dto.setLanguageId(languageId);
+        dto.setPublisherId(publisherId);
+        dto.setAuthorIds(List.of(authorId));
+
+        when(genreRepository.findById(genreId)).thenReturn(Optional.of(genre(genreId)));
+        when(languageRepository.findById(languageId)).thenReturn(Optional.of(language(languageId)));
+        when(publisherRepository.findById(publisherId)).thenReturn(Optional.of(publisher));
+        when(authorRepository.findAllById(List.of(authorId))).thenReturn(List.of(author));
+        when(bookRepository.save(any(Book.class))).thenAnswer(invocation -> {
+            Book book = invocation.getArgument(0);
+            book.setId(UUID.randomUUID());
+            return book;
+        });
 
         BookDto result = bookService.createBook(dto);
 
-        assertNotNull(result);
-        assertEquals(id, result.getId());
-        assertEquals("Test Book", result.getTitle());
-        verify(bookRepository, times(1)).save(any(Book.class));
-        verify(authorRepository, times(1)).findAllById(dto.getAuthorIds());
+        assertEquals("Книга", result.getTitle());
+        assertEquals(genreId, result.getGenreId());
+        assertEquals("FICTION", result.getGenreName());
+        assertEquals(languageId, result.getLanguageId());
+        assertEquals("Русский", result.getLanguageName());
+        assertEquals(publisherId, result.getPublisherId());
+        assertEquals(authorId, result.getAuthors().getFirst().getId());
     }
 
     @Test
-    void getBookById() {
-        UUID id = UUID.randomUUID();
-        Book book = createTestBook(id);
-        when(bookRepository.findById(id)).thenReturn(Optional.of(book));
+    void createBookRejectsMissingAuthor() {
+        UUID genreId = UUID.randomUUID();
+        UUID languageId = UUID.randomUUID();
+        UUID authorId = UUID.randomUUID();
 
-        BookDto result = bookService.getBookById(id);
+        BookCreateDto dto = new BookCreateDto();
+        dto.setTitle("Книга");
+        dto.setPublicationDate(LocalDate.of(2020, 1, 1));
+        dto.setGenreId(genreId);
+        dto.setLanguageId(languageId);
+        dto.setAuthorIds(List.of(authorId));
 
-        assertNotNull(result);
-        assertEquals(id, result.getId());
-        assertEquals("Test Book", result.getTitle());
+        when(genreRepository.findById(genreId)).thenReturn(Optional.of(genre(genreId)));
+        when(languageRepository.findById(languageId)).thenReturn(Optional.of(language(languageId)));
+        when(authorRepository.findAllById(List.of(authorId))).thenReturn(List.of());
+
+        assertThrows(ResourceNotFoundException.class, () -> bookService.createBook(dto));
     }
 
     @Test
-    void getBookByIdNotFound() {
+    void getBookByIdThrowsWhenNotFound() {
         UUID id = UUID.randomUUID();
         when(bookRepository.findById(id)).thenReturn(Optional.empty());
+
         assertThrows(ResourceNotFoundException.class, () -> bookService.getBookById(id));
-    }
-
-    @Test
-    void getAllBooks() {
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        Book book1 = createTestBook(id1);
-        Book book2 = createTestBook(id2);
-        Page<Book> page = new PageImpl<>(List.of(book1, book2));
-
-        when(bookRepository.findAll(PageRequest.of(0, 10))).thenReturn(page);
-
-        Page<BookDto> result = bookService.getAllBooks(0, 10);
-
-        assertNotNull(result);
-        assertEquals(2, result.getTotalElements());
-        assertEquals(id1, result.getContent().get(0).getId());
-        assertEquals(id2, result.getContent().get(1).getId());
-    }
-
-    @Test
-    void searchByTitle() {
-        UUID id = UUID.randomUUID();
-        Book book = createTestBook(id);
-        when(bookRepository.findByTitleContainingIgnoreCase("Test")).thenReturn(List.of(book));
-
-        List<BookDto> result = bookService.searchByTitle("Test");
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(id, result.get(0).getId());
-    }
-
-    @Test
-    void searchByAuthor() {
-        UUID id = UUID.randomUUID();
-        Book book = createTestBook(id);
-        when(bookRepository.findByAuthorsLastNameIgnoreCase("Author")).thenReturn(List.of(book));
-
-        List<BookDto> result = bookService.searchByAuthor("Author");
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(id, result.get(0).getId());
-    }
-
-    @Test
-    void updateBook() {
-        UUID id = UUID.randomUUID();
-        Book existing = createTestBook(id);
-        BookCreateDto dto = createTestDto();
-        dto.setTitle("Updated Title");
-
-        when(bookRepository.findById(id)).thenReturn(Optional.of(existing));
-        when(authorRepository.findAllById(dto.getAuthorIds())).thenReturn(List.of(new Author()));
-        when(bookRepository.save(any(Book.class))).thenReturn(existing);
-
-        BookDto result = bookService.updateBook(id, dto);
-
-        assertNotNull(result);
-        assertEquals("Updated Title", result.getTitle());
-        verify(bookRepository, times(1)).save(existing);
-        verify(authorRepository, times(1)).findAllById(dto.getAuthorIds());
-    }
-
-    @Test
-    void deleteBook() {
-        UUID id = UUID.randomUUID();
-        Book book = createTestBook(id);
-        when(bookRepository.findById(id)).thenReturn(Optional.of(book));
-        doNothing().when(bookRepository).delete(book);
-
-        bookService.deleteBook(id);
-
-        verify(bookRepository, times(1)).delete(book);
-    }
-
-    @Test
-    void deleteBookNotFound() {
-        UUID id = UUID.randomUUID();
-        when(bookRepository.findById(id)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class, () -> bookService.deleteBook(id));
-    }
-
-    @Test
-    void getBooksByGenre() {
-        UUID id = UUID.randomUUID();
-        Book book = createTestBook(id);
-        when(bookRepository.findByGenre(BookGenre.FICTION)).thenReturn(List.of(book));
-
-        List<BookDto> result = bookService.getBooksByGenre(BookGenre.FICTION);
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(id, result.get(0).getId());
-    }
-
-    @Test
-    void getBooksByPublisher() {
-        UUID id = UUID.randomUUID();
-        Book book = createTestBook(id);
-        when(bookRepository.findByPublisherIgnoreCase("Test Publisher")).thenReturn(List.of(book));
-
-        List<BookDto> result = bookService.getBooksByPublisher("Test Publisher");
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(id, result.get(0).getId());
-    }
-
-    @Test
-    void searchBooks() {
-        UUID id = UUID.randomUUID();
-        Book book = createTestBook(id);
-        Page<Book> page = new PageImpl<>(List.of(book));
-        when(bookRepository.searchBooks(any(), any(), any(), any(), any(), any())).thenReturn(page);
-
-        Page<BookDto> result = bookService.searchBooks("Test", BookGenre.FICTION, "Publisher", 2020, 2023, 0, 10);
-
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
-        assertEquals(id, result.getContent().get(0).getId());
     }
 }

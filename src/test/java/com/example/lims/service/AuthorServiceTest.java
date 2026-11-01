@@ -1,66 +1,61 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.AuthorDto;
+import com.example.lims.entity.item.Author;
+import com.example.lims.exception.BusinessLogicException;
 import com.example.lims.exception.ResourceNotFoundException;
-import com.example.lims.model.Author;
 import com.example.lims.repository.AuthorRepository;
+import com.example.lims.repository.LibraryItemRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AuthorServiceTest {
 
-    @Mock
-    private AuthorRepository authorRepository;
+    @Mock private AuthorRepository authorRepository;
+    @Mock private LibraryItemRepository libraryItemRepository;
 
-    @InjectMocks
-    private AuthorService authorService;
-
-    @Test
-    void getAllAuthors() {
-        List<Author> authors = List.of(new Author());
-        when(authorRepository.findAll()).thenReturn(authors);
-
-        List<Author> result = authorService.getAllAuthors();
-
-        assertEquals(1, result.size());
-        verify(authorRepository).findAll();
-    }
+    @InjectMocks private AuthorService authorService;
 
     @Test
     void createAuthor() {
-        Author author = new Author("Иван", "Иванов", null);
-        when(authorRepository.save(author)).thenReturn(author);
+        AuthorDto dto = new AuthorDto(null, "Иван", "Иванов", null, null);
 
-        Author result = authorService.createAuthor(author);
+        when(authorRepository.save(any(Author.class))).thenAnswer(invocation -> {
+            Author author = invocation.getArgument(0);
+            author.setId(UUID.randomUUID());
+            return author;
+        });
 
-        assertNotNull(result);
-        verify(authorRepository).save(author);
+        AuthorDto result = authorService.createAuthor(dto);
+
+        assertEquals("Иван", result.getFirstName());
+        assertEquals("Иванов", result.getLastName());
+        assertEquals("Иван Иванов", result.getFullName());
     }
 
     @Test
-    void getAuthorById() {
+    void deleteAuthorWithWorksIsForbidden() {
         UUID id = UUID.randomUUID();
-        Author author = new Author();
-        when(authorRepository.findById(id)).thenReturn(Optional.of(author));
+        when(authorRepository.findById(id)).thenReturn(Optional.of(new Author()));
+        when(libraryItemRepository.existsByAuthors_Id(id)).thenReturn(true);
 
-        Author result = authorService.getAuthorById(id);
-
-        assertNotNull(result);
-        verify(authorRepository).findById(id);
+        assertThrows(BusinessLogicException.class, () -> authorService.deleteAuthor(id));
     }
 
     @Test
-    void getAuthorByIdNotFound() {
+    void getAuthorByIdThrowsWhenNotFound() {
         UUID id = UUID.randomUUID();
         when(authorRepository.findById(id)).thenReturn(Optional.empty());
 
