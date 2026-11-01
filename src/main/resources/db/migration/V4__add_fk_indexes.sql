@@ -1,0 +1,14 @@
+CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
+CREATE INDEX IF NOT EXISTS idx_loans_copy_id ON loans(copy_id);
+CREATE INDEX IF NOT EXISTS idx_loans_status_id ON loans(status_id);
+CREATE INDEX IF NOT EXISTS idx_item_copies_item_id ON item_copies(item_id);
+CREATE INDEX IF NOT EXISTS idx_item_copies_status_id ON item_copies(status_id);
+CREATE INDEX IF NOT EXISTS idx_library_items_language_id ON library_items(language_id);
+CREATE INDEX IF NOT EXISTS idx_library_items_publisher_id ON library_items(publisher_id);
+CREATE INDEX IF NOT EXISTS idx_library_items_location_id ON library_items(location_id);
+CREATE INDEX IF NOT EXISTS idx_books_genre_id ON books(genre_id);
+CREATE INDEX IF NOT EXISTS idx_magazines_genre_id ON magazines(genre_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_type_id ON notifications(type_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action_id ON audit_logs(action_id);

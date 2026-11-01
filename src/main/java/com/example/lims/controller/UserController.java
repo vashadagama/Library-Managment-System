@@ -2,10 +2,8 @@ package com.example.lims.controller;
 
 import com.example.lims.dto.UserCreateDto;
 import com.example.lims.dto.UserDto;
-import com.example.lims.enums.UserStatus;
-import jakarta.validation.Valid;
-import com.example.lims.model.User;
 import com.example.lims.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +14,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
     private final UserService userService;
 
     public UserController(UserService userService) {
@@ -31,22 +30,21 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@Valid @RequestBody UserCreateDto dto) {
+    public UserDto createUser(@Valid @RequestBody UserCreateDto dto) {
         return userService.createUser(dto);
     }
 
     @PatchMapping("/{id}/status")
-    public User changeStatus(@PathVariable UUID id, @RequestBody Map<String, String> body) {
-        String statusStr = body.get("status");
-        UserStatus newStatus = UserStatus.valueOf(statusStr.toUpperCase());
-        return userService.changeUserStatus(id, newStatus);
+    public UserDto changeStatus(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        return userService.changeUserStatus(id, status);
     }
 
     @PatchMapping("/{id}/max-loans")
-    public User updateMaxLoans(@PathVariable UUID id, @RequestBody Map<String, Integer> body) {
+    public UserDto updateMaxLoans(@PathVariable UUID id, @RequestBody Map<String, Integer> body) {
         Integer newLimit = body.get("maxActiveLoans");
         if (newLimit == null) {
-            throw new RuntimeException("Поле maxActiveLoans обязательно");
+            throw new IllegalArgumentException("Поле maxActiveLoans обязательно");
         }
         return userService.updateMaxLoansLimit(id, newLimit);
     }

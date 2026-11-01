@@ -1,6 +1,6 @@
 package com.example.lims.security;
 
-import com.example.lims.model.User;
+import com.example.lims.entity.user.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,11 +22,14 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        String roleName = user.getRole() != null ? user.getRole().getName() : "READER";
+        return List.of(new SimpleGrantedAuthority("ROLE_" + roleName));
     }
 
     @Override
-    public String getPassword() { return user.getPassword() != null ? user.getPassword() : ""; }
+    public String getPassword() {
+        return user.getPasswordHash() != null ? user.getPasswordHash() : "";
+    }
 
     @Override
     public String getUsername() {
@@ -34,16 +37,22 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     @Override
-    public boolean isAccountNonExpired() { return true; }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return user.getStatus() != com.example.lims.enums.UserStatus.BLOCKED;
+    public boolean isAccountNonExpired() {
+        return true;
     }
 
     @Override
-    public boolean isCredentialsNonExpired() { return true; }
+    public boolean isAccountNonLocked() {
+        return user.getStatus() == null || !"BLOCKED".equalsIgnoreCase(user.getStatus().getName());
+    }
 
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 }

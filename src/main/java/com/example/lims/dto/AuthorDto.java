@@ -1,19 +1,11 @@
-package com.example.lims.model;
+package com.example.lims.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
-@Entity
-@Table(name = "authors")
-public class Author {
+public class AuthorDto {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @NotBlank(message = "Имя автора обязательно")
@@ -23,24 +15,17 @@ public class Author {
     private String lastName;
 
     private String middleName;
+    private String fullName;
 
-    @JsonIgnore
-    @ManyToMany(mappedBy = "authors")
-    private List<LibraryItem> works = new ArrayList<>();
-
-    public Author() {
+    public AuthorDto() {
     }
 
-    public Author(String firstName, String lastName, String middleName) {
+    public AuthorDto(UUID id, String firstName, String lastName, String middleName, String fullName) {
+        this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.middleName = middleName;
-    }
-
-    public void addWork(LibraryItem item) {
-        if (item != null && !works.contains(item)) {
-            works.add(item);
-        }
+        this.fullName = fullName;
     }
 
     public UUID getId() { return id; }
@@ -51,5 +36,6 @@ public class Author {
     public void setLastName(String lastName) { this.lastName = lastName; }
     public String getMiddleName() { return middleName; }
     public void setMiddleName(String middleName) { this.middleName = middleName; }
-    public List<LibraryItem> getWorks() { return works; }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 }

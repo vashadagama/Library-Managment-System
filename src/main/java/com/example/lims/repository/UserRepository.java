@@ -1,6 +1,6 @@
 package com.example.lims.repository;
 
-import com.example.lims.model.User;
+import com.example.lims.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,13 +12,18 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
+
     Optional<User> findByEmail(String email);
-    Optional<User> findByLibraryCardNumber(String number);
 
-    @Query("SELECT u FROM User u WHERE " +
-            "(:search IS NULL OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Optional<User> findByLibraryCardNumber(String libraryCardNumber);
+
+    @Query("""
+            SELECT u FROM User u
+            WHERE (:search IS NULL
+                   OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(u.middleName) LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))
+            """)
     List<User> searchUsers(@Param("search") String search);
-
 }

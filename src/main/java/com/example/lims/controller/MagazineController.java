@@ -2,7 +2,6 @@ package com.example.lims.controller;
 
 import com.example.lims.dto.MagazineCreateDto;
 import com.example.lims.dto.MagazineDto;
-import com.example.lims.enums.MagazineGenre;
 import com.example.lims.service.MagazineService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -30,11 +29,11 @@ public class MagazineController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String title,
-            @RequestParam(required = false) MagazineGenre genre,
-            @RequestParam(required = false) String publisher
+            @RequestParam(required = false) UUID genreId,
+            @RequestParam(required = false) UUID publisherId
     ) {
-        if (title != null || genre != null || publisher != null) {
-            return magazineService.search(title, genre, publisher, page, size);
+        if (title != null || genreId != null || publisherId != null) {
+            return magazineService.search(title, genreId, publisherId, page, size);
         }
         return magazineService.getAll(page, size);
     }

@@ -45,11 +45,17 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/dictionaries/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/books/**", "/api/magazines/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/books/**", "/api/magazines/**").hasAnyRole("LIBRARIAN", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/books/**", "/api/magazines/**").hasAnyRole("LIBRARIAN", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/books/**", "/api/magazines/**").hasRole("ADMIN")
                         .requestMatchers("/api/me/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/search")
+                            .hasAnyRole("LIBRARIAN", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/users")
+                            .hasAnyRole("LIBRARIAN", "ADMIN")
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/loans/**").hasAnyRole("LIBRARIAN", "ADMIN")
                         .anyRequest().authenticated()
@@ -64,7 +70,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000")); // Адрес React-приложения
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

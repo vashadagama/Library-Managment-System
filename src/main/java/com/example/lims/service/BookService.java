@@ -1,13 +1,16 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.AuthorDto;
 import com.example.lims.dto.BookCreateDto;
 import com.example.lims.dto.BookDto;
-import com.example.lims.enums.BookGenre;
+import com.example.lims.entity.Location;
+import com.example.lims.entity.Publisher;
+import com.example.lims.entity.item.Author;
+import com.example.lims.entity.item.Book;
+import com.example.lims.entity.status.Genre;
+import com.example.lims.entity.status.Language;
 import com.example.lims.exception.ResourceNotFoundException;
-import com.example.lims.model.Author;
-import com.example.lims.model.Book;
-import com.example.lims.repository.AuthorRepository;
-import com.example.lims.repository.BookRepository;
+import com.example.lims.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -25,121 +27,166 @@ public class BookService {
 
     private final BookRepository bookRepository;
     private final AuthorRepository authorRepository;
+    private final GenreRepository genreRepository;
+    private final PublisherRepository publisherRepository;
+    private final LanguageRepository languageRepository;
+    private final LocationRepository locationRepository;
 
-    public BookService(BookRepository bookRepository, AuthorRepository authorRepository) {
+    public BookService(BookRepository bookRepository,
+                       AuthorRepository authorRepository,
+                       GenreRepository genreRepository,
+                       PublisherRepository publisherRepository,
+                       LanguageRepository languageRepository,
+                       LocationRepository locationRepository) {
         this.bookRepository = bookRepository;
         this.authorRepository = authorRepository;
-    }
-
-    private BookDto toDto(Book book) {
-        return new BookDto(
-                book.getId(),
-                book.getTitle(),
-                book.getPublisher(),
-                book.getPublicationDate(),
-                book.getIsbn(),
-                book.getLocation(),
-                book.getLanguage(),
-                book.getGenre(),
-                book.getPageCount(),
-                book.getAuthors()
-        );
-    }
-
-    private Page<BookDto> toDtoPage(Page<Book> page) {
-        return page.map(this::toDto);
+        this.genreRepository = genreRepository;
+        this.publisherRepository = publisherRepository;
+        this.languageRepository = languageRepository;
+        this.locationRepository = locationRepository;
     }
 
     @Transactional
     public BookDto createBook(BookCreateDto dto) {
         Book book = new Book();
-        book.setTitle(dto.getTitle());
-        book.setPublisher(dto.getPublisher());
-        book.setPublicationDate(dto.getPublicationDate());
-        book.setIsbn(dto.getIsbn());
-        book.setLocation(dto.getLocation());
-        book.setLanguage(dto.getLanguage());
-        book.setGenre(dto.getGenre());
-        book.setPageCount(dto.getPageCount());
-
-        // Привязка авторов
-        if (dto.getAuthorIds() != null) {
-            List<Author> authors = authorRepository.findAllById(dto.getAuthorIds());
-            for (Author author : authors) {
-                book.addAuthor(author);
-            }
-        }
-
-        Book saved = bookRepository.save(book);
-        return toDto(saved);
+        applyDto(book, dto);
+        return toDto(bookRepository.save(book));
     }
 
     @Transactional
     public BookDto updateBook(UUID id, BookCreateDto dto) {
-        Book existing = bookRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
-
-        existing.setTitle(dto.getTitle());
-        existing.setPublisher(dto.getPublisher());
-        existing.setPublicationDate(dto.getPublicationDate());
-        existing.setIsbn(dto.getIsbn());
-        existing.setLocation(dto.getLocation());
-        existing.setLanguage(dto.getLanguage());
-        existing.setGenre(dto.getGenre());
-        existing.setPageCount(dto.getPageCount());
-
-        if (dto.getAuthorIds() != null) {
-            existing.getAuthors().clear();
-            List<Author> authors = authorRepository.findAllById(dto.getAuthorIds());
-            for (Author author : authors) {
-                existing.addAuthor(author);
-            }
-        }
-
-        Book saved = bookRepository.save(existing);
-        return toDto(saved);
+        Book existing = getEntity(id);
+        applyDto(existing, dto);
+        return toDto(bookRepository.save(existing));
     }
 
     @Transactional
     public void deleteBook(UUID id) {
-        Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
+        Book book = getEntity(id);
         bookRepository.delete(book);
     }
 
     public Page<BookDto> getAllBooks(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return toDtoPage(bookRepository.findAll(pageable));
+        return bookRepository.findAll(pageable).map(this::toDto);
     }
 
     public BookDto getBookById(UUID id) {
-        Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
-        return toDto(book);
+        return toDto(getEntity(id));
     }
 
-    public List<BookDto> getBooksByGenre(BookGenre genre) {
-        return bookRepository.findByGenre(genre).stream().map(this::toDto).collect(Collectors.toList());
+    public List<BookDto> getBooksByGenre(UUID genreId) {
+        return bookRepository.findByGenre_Id(genreId).stream().map(this::toDto).toList();
     }
 
     public List<BookDto> getBooksByPublisher(String publisher) {
-        return bookRepository.findByPublisherIgnoreCase(publisher).stream().map(this::toDto).collect(Collectors.toList());
+        return bookRepository.findByPublisher_NameIgnoreCase(publisher).stream().map(this::toDto).toList();
     }
 
     public List<BookDto> searchByTitle(String title) {
-        return bookRepository.findByTitleContainingIgnoreCase(title).stream().map(this::toDto).collect(Collectors.toList());
+        return bookRepository.findByTitleContainingIgnoreCase(title).stream().map(this::toDto).toList();
     }
 
     public List<BookDto> searchByAuthor(String authorName) {
-        return bookRepository.findByAuthorsLastNameIgnoreCase(authorName).stream().map(this::toDto).collect(Collectors.toList());
+        return bookRepository.findByAuthorLastName(authorName).stream().map(this::toDto).toList();
     }
 
-    public Page<BookDto> searchBooks(String title, BookGenre genre, String publisher,
+    public Page<BookDto> searchBooks(String title, UUID genreId, UUID publisherId,
                                      Integer yearFrom, Integer yearTo, int page, int size) {
         LocalDate from = yearFrom != null ? LocalDate.of(yearFrom, 1, 1) : null;
         LocalDate to = yearTo != null ? LocalDate.of(yearTo, 12, 31) : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<Book> resultPage = bookRepository.searchBooks(title, genre, publisher, from, to, pageable);
-        return toDtoPage(resultPage);
+        return bookRepository.searchBooks(title, genreId, publisherId, from, to, pageable).map(this::toDto);
+    }
+
+    private void applyDto(Book book, BookCreateDto dto) {
+        book.setTitle(dto.getTitle());
+        book.setPublicationDate(dto.getPublicationDate());
+        book.setIsbn(dto.getIsbn());
+        book.setPageCount(dto.getPageCount());
+        book.setGenre(resolveGenre(dto.getGenreId()));
+        book.setLanguage(resolveLanguage(dto.getLanguageId()));
+        book.setPublisher(resolvePublisher(dto.getPublisherId()));
+        book.setLocation(resolveLocation(dto.getLocationId()));
+
+        book.getAuthors().clear();
+        if (dto.getAuthorIds() != null && !dto.getAuthorIds().isEmpty()) {
+            List<Author> authors = authorRepository.findAllById(dto.getAuthorIds());
+            if (authors.size() != dto.getAuthorIds().size()) {
+                throw new ResourceNotFoundException("Один или несколько авторов не найдены");
+            }
+            authors.forEach(book::addAuthor);
+        }
+    }
+
+    private Genre resolveGenre(UUID id) {
+        if (id == null) {
+            throw new ResourceNotFoundException("Жанр не указан");
+        }
+        return genreRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Жанр не найден"));
+    }
+
+    private Language resolveLanguage(UUID id) {
+        if (id == null) {
+            throw new ResourceNotFoundException("Язык не указан");
+        }
+        return languageRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Язык не найден"));
+    }
+
+    private Publisher resolvePublisher(UUID id) {
+        return id == null ? null : publisherRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Издатель не найден"));
+    }
+
+    private Location resolveLocation(UUID id) {
+        return id == null ? null : locationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Расположение не найдено"));
+    }
+
+    private Book getEntity(UUID id) {
+        return bookRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Книга не найдена"));
+    }
+
+    private BookDto toDto(Book book) {
+        List<AuthorDto> authors = book.getAuthors().stream()
+                .map(a -> new AuthorDto(a.getId(), a.getFirstName(), a.getLastName(),
+                        a.getMiddleName(), a.getFullName()))
+                .toList();
+        return new BookDto(
+                book.getId(),
+                book.getTitle(),
+                book.getPublisher() != null ? book.getPublisher().getId() : null,
+                book.getPublisher() != null ? book.getPublisher().getName() : null,
+                book.getPublicationDate(),
+                book.getIsbn(),
+                book.getLocation() != null ? book.getLocation().getId() : null,
+                locationName(book.getLocation()),
+                book.getLanguage() != null ? book.getLanguage().getId() : null,
+                book.getLanguage() != null ? book.getLanguage().getName() : null,
+                book.getGenre() != null ? book.getGenre().getId() : null,
+                book.getGenre() != null ? book.getGenre().getName() : null,
+                book.getPageCount(),
+                authors
+        );
+    }
+
+    private String locationName(Location location) {
+        if (location == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        if (location.getHall() != null && !location.getHall().isBlank()) sb.append(location.getHall());
+        if (location.getShelf() != null && !location.getShelf().isBlank()) {
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append(location.getShelf());
+        }
+        if (location.getRack() != null && !location.getRack().isBlank()) {
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append(location.getRack());
+        }
+        return sb.isEmpty() ? null : sb.toString();
     }
 }

@@ -1,6 +1,6 @@
 package com.example.lims.controller;
 
-import com.example.lims.model.Author;
+import com.example.lims.dto.AuthorDto;
 import com.example.lims.service.AuthorService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +11,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/authors")
 public class AuthorController {
+
     private final AuthorService authorService;
 
     public AuthorController(AuthorService authorService) {
@@ -18,22 +19,22 @@ public class AuthorController {
     }
 
     @GetMapping
-    public List<Author> getAll() {
+    public List<AuthorDto> getAll() {
         return authorService.getAllAuthors();
     }
 
     @PostMapping
-    public Author create(@Valid @RequestBody Author author) {
+    public AuthorDto create(@Valid @RequestBody AuthorDto author) {
         return authorService.createAuthor(author);
     }
 
     @GetMapping("/{id}")
-    public Author getById(@PathVariable UUID id) {
+    public AuthorDto getById(@PathVariable UUID id) {
         return authorService.getAuthorById(id);
     }
 
     @PutMapping("/{id}")
-    public Author update(@PathVariable UUID id, @Valid @RequestBody Author author) {
+    public AuthorDto update(@PathVariable UUID id, @Valid @RequestBody AuthorDto author) {
         return authorService.updateAuthor(id, author);
     }
 

@@ -1,150 +1,183 @@
 package com.example.lims.service;
 
+import com.example.lims.dto.LoanDto;
 import com.example.lims.dto.PopularBookDto;
-import com.example.lims.enums.ItemStatus;
-import com.example.lims.enums.LoanStatus;
-import com.example.lims.enums.UserStatus;
+import com.example.lims.entity.item.ItemCopy;
+import com.example.lims.entity.item.LibraryItem;
+import com.example.lims.entity.loan.Fine;
+import com.example.lims.entity.loan.Loan;
+import com.example.lims.entity.status.ItemStatus;
+import com.example.lims.entity.status.LoanStatus;
+import com.example.lims.entity.user.User;
 import com.example.lims.exception.BusinessLogicException;
 import com.example.lims.exception.ResourceNotFoundException;
-import com.example.lims.model.ItemCopy;
-import com.example.lims.model.Loan;
-import com.example.lims.model.User;
-import com.example.lims.repository.ItemCopyRepository;
-import com.example.lims.repository.LoanRepository;
-import com.example.lims.repository.UserRepository;
+import com.example.lims.repository.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
 @Service
 @Transactional
 public class LoanService {
+
+    private static final String ACTIVE = "ACTIVE";
+    private static final String RETURNED = "RETURNED";
+    private static final String RENEWED = "RENEWED";
+    private static final String OVERDUE = "OVERDUE";
+    private static final String AVAILABLE = "AVAILABLE";
+    private static final String BORROWED = "BORROWED";
+
+    private static final List<String> ACTIVE_STATUSES = List.of(ACTIVE, RENEWED, OVERDUE);
+
     private final LoanRepository loanRepository;
     private final UserRepository userRepository;
     private final ItemCopyRepository itemCopyRepository;
+    private final ItemStatusRepository itemStatusRepository;
+    private final LoanStatusRepository loanStatusRepository;
+    private final FineRepository fineRepository;
+    private final SystemParameterService systemParameterService;
 
-    public LoanService(LoanRepository loanRepository, UserRepository userRepository, ItemCopyRepository itemCopyRepository) {
+    public LoanService(LoanRepository loanRepository,
+                       UserRepository userRepository,
+                       ItemCopyRepository itemCopyRepository,
+                       ItemStatusRepository itemStatusRepository,
+                       LoanStatusRepository loanStatusRepository,
+                       FineRepository fineRepository,
+                       SystemParameterService systemParameterService) {
         this.loanRepository = loanRepository;
         this.userRepository = userRepository;
         this.itemCopyRepository = itemCopyRepository;
+        this.itemStatusRepository = itemStatusRepository;
+        this.loanStatusRepository = loanStatusRepository;
+        this.fineRepository = fineRepository;
+        this.systemParameterService = systemParameterService;
     }
 
-    @Transactional
-    public Loan issueBookByLibraryItem(UUID userId, UUID libraryItemId) {
+    public LoanDto issueBookByLibraryItem(UUID userId, UUID libraryItemId) {
         User user = validateUserForLoan(userId);
 
-        ItemCopy availableCopy = itemCopyRepository.findByItemIdAndStatus(libraryItemId, ItemStatus.AVAILABLE)
+        ItemCopy availableCopy = itemCopyRepository
+                .findForUpdateByItemIdAndStatusName(libraryItemId, AVAILABLE)
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new BusinessLogicException("Нет свободных экземпляров этого издания"));
 
-        return createLoan(user, availableCopy);
+        return toDto(createLoan(user, availableCopy));
     }
 
-    @Transactional
-    public Loan issueBookByCopy(UUID userId, UUID copyId) {
+    public LoanDto issueBookByCopy(UUID userId, UUID copyId) {
         User user = validateUserForLoan(userId);
 
-        ItemCopy copy = itemCopyRepository.findById(copyId)
+        ItemCopy copy = itemCopyRepository.findByIdForUpdate(copyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Экземпляр не найден"));
 
-        if (copy.getStatus() != ItemStatus.AVAILABLE) {
-            throw new BusinessLogicException("Экземпляр недоступен для выдачи. Текущий статус: " + copy.getStatus().getDisplayName());
+        if (!AVAILABLE.equalsIgnoreCase(copy.getStatus().getName())) {
+            throw new BusinessLogicException("Экземпляр недоступен для выдачи. Текущий статус: " + copy.getStatus().getName());
         }
 
-        return createLoan(user, copy);
+        return toDto(createLoan(user, copy));
     }
 
-    private User validateUserForLoan(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+    public LoanDto returnBook(UUID loanId) {
+        Loan loan = getEntity(loanId);
 
-        if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new BusinessLogicException("Выдача запрещена. Статус аккаунта: " + user.getStatus().getDisplayName());
-        }
-        return user;
-    }
-
-    private Loan createLoan(User user, ItemCopy copy) {
-        long activeLoans = loanRepository.countByUserIdAndStatusIn(user.getId(),
-                List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE));
-
-        if (activeLoans >= user.getMaxActiveLoans()) {
-            throw new BusinessLogicException("Читатель уже взял максимум книг (" + user.getMaxActiveLoans() + " шт)");
-        }
-
-        copy.setStatus(ItemStatus.BORROVED);
-        itemCopyRepository.save(copy);
-
-        Loan loan = new Loan(user, copy);
-        loan.setDueDate(LocalDate.now().plusDays(14));
-        loan.setStatus(LoanStatus.ACTIVE);
-
-        return loanRepository.save(loan);
-    }
-
-    @Transactional
-    public Loan returnBook(UUID loanId) {
-        Loan loan = loanRepository.findById(loanId)
-                .orElseThrow(() -> new ResourceNotFoundException("Запись о выдаче не найдена"));
-
-        if (loan.getStatus() == LoanStatus.RETURNED) {
+        if (RETURNED.equalsIgnoreCase(loan.getStatus().getName())) {
             throw new BusinessLogicException("Эта выдача уже возвращена");
         }
 
-        loan.setReturnDate(LocalDate.now());
-        loan.setStatus(LoanStatus.RETURNED);
+        LocalDate returnDate = LocalDate.now();
+        loan.setReturnDate(returnDate);
+        loan.setStatus(loanStatus(RETURNED));
 
         ItemCopy copy = loan.getCopy();
-        copy.setStatus(ItemStatus.AVAILABLE);
+        copy.setStatus(itemStatus(AVAILABLE));
         itemCopyRepository.save(copy);
 
-        if (loan.getReturnDate().isAfter(loan.getDueDate())) {
-            long daysOverdue = DAYS.between(loan.getDueDate(), loan.getReturnDate());
-            System.out.printf("Просрочка на %d дней. Штраф (заглушка): %.2f руб.%n", daysOverdue, daysOverdue * 10.0);
+        if (returnDate.isAfter(loan.getDueDate())) {
+            long daysOverdue = DAYS.between(loan.getDueDate(), returnDate);
+            if (daysOverdue > 0) {
+                BigDecimal rate = systemParameterService.getDecimal("fine_per_day", BigDecimal.TEN);
+                Fine fine = new Fine();
+                fine.setAmount(rate.multiply(BigDecimal.valueOf(daysOverdue)));
+                fine.setReason("Просрочка на " + daysOverdue + " дн.");
+                fine.setIsPaid(false);
+                fine.setLoan(loan);
+                fineRepository.save(fine);
+            }
         }
 
-        return loanRepository.save(loan);
+        return toDto(loanRepository.save(loan));
     }
 
-    @Transactional
-    public Loan renewLoan(UUID loanId, int extraDays) {
-        Loan loan = loanRepository.findById(loanId)
-                .orElseThrow(() -> new ResourceNotFoundException("Запись о выдаче не найдена"));
-
-        if (loan.getStatus() != LoanStatus.ACTIVE && loan.getStatus() != LoanStatus.RENEWED) {
-            throw new BusinessLogicException("Нельзя продлить выдачу со статусом: " + loan.getStatus().getDisplayName());
+    public LoanDto renewLoan(UUID loanId, int extraDays) {
+        if (extraDays <= 0) {
+            throw new BusinessLogicException("Количество дней продления должно быть положительным");
         }
 
-        loan.renewLoan(extraDays);
-        return loanRepository.save(loan);
-    }
+        Loan loan = getEntity(loanId);
+        String status = loan.getStatus().getName();
 
-    public List<Loan> getOverdueLoans() {
-        return loanRepository.findExpiredLoans();
-    }
+        if (!ACTIVE.equalsIgnoreCase(status) && !RENEWED.equalsIgnoreCase(status)) {
+            throw new BusinessLogicException("Нельзя продлить выдачу со статусом: " + status);
+        }
 
-    @Transactional(readOnly = true)
-    public List<Loan> getLoansByUser(UUID userId) {
-        return loanRepository.findByUserId(userId);
-    }
+        loan.setDueDate(loan.getDueDate().plusDays(extraDays));
+        loan.setRenewalCount(loan.getRenewalCount() + 1);
+        loan.setStatus(loanStatus(RENEWED));
 
-    @Transactional(readOnly = true)
-    public List<Loan> getLoansByCopy(UUID copyId) {
-        return loanRepository.findByCopyId(copyId);
+        return toDto(loanRepository.save(loan));
     }
 
     @Transactional(readOnly = true)
-    public List<Loan> getActiveLoansByUser(UUID userId) {
-        return loanRepository.findByUserIdAndStatusIn(userId,
-                List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE));
+    public List<LoanDto> getAllActiveLoans() {
+        return loanRepository.findByStatusNames(ACTIVE_STATUSES).stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoanDto> getOverdueLoans() {
+        return loanRepository.findExpiredLoans(ACTIVE_STATUSES).stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoanDto> getLoansByUser(UUID userId) {
+        return loanRepository.findByUserId(userId).stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoanDto> getLoansByCopy(UUID copyId) {
+        return loanRepository.findByCopyId(copyId).stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoanDto> getActiveLoansByUser(UUID userId) {
+        return loanRepository.findByUserIdAndStatusNames(userId, ACTIVE_STATUSES)
+                .stream().map(this::toDto).toList();
+    }
+
+    public int markOverdueLoans() {
+        LoanStatus overdueStatus = loanStatus(OVERDUE);
+        List<Loan> expiredLoans = loanRepository.findExpiredLoans(ACTIVE_STATUSES);
+        int changed = 0;
+        for (Loan loan : expiredLoans) {
+            if (!OVERDUE.equalsIgnoreCase(loan.getStatus().getName())) {
+                loan.setStatus(overdueStatus);
+                changed++;
+            }
+        }
+        if (changed > 0) {
+            loanRepository.saveAll(expiredLoans);
+        }
+        return changed;
     }
 
     @Transactional(readOnly = true)
@@ -158,7 +191,7 @@ public class LoanService {
                         (String) row[2],
                         ((Number) row[3]).longValue()
                 ))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -168,5 +201,74 @@ public class LoanService {
         stats.put("activeLoans", loanRepository.countActiveLoans());
         stats.put("overdueReturns", loanRepository.countOverdueReturns());
         return stats;
+    }
+
+    private User validateUserForLoan(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+
+        if (!ACTIVE.equalsIgnoreCase(user.getStatus().getName())) {
+            throw new BusinessLogicException("Выдача запрещена. Статус аккаунта: " + user.getStatus().getName());
+        }
+        return user;
+    }
+
+    private Loan createLoan(User user, ItemCopy copy) {
+        long activeLoans = loanRepository.countByUserIdAndStatusNames(user.getId(), ACTIVE_STATUSES);
+        int limit = user.getMaxActiveLoans() != null
+                ? user.getMaxActiveLoans()
+                : systemParameterService.getInt("max_active_loans_default", 5);
+
+        if (activeLoans >= limit) {
+            throw new BusinessLogicException("Читатель уже взял максимум книг (" + limit + " шт)");
+        }
+
+        copy.setStatus(itemStatus(BORROWED));
+        itemCopyRepository.save(copy);
+
+        int loanPeriodDays = systemParameterService.getInt("loan_period_days", 14);
+
+        Loan loan = new Loan();
+        loan.setUser(user);
+        loan.setCopy(copy);
+        loan.setLoanDate(LocalDate.now());
+        loan.setDueDate(LocalDate.now().plusDays(loanPeriodDays));
+        loan.setRenewalCount(0);
+        loan.setStatus(loanStatus(ACTIVE));
+
+        return loanRepository.save(loan);
+    }
+
+    private Loan getEntity(UUID id) {
+        return loanRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Запись о выдаче не найдена"));
+    }
+
+    private LoanStatus loanStatus(String name) {
+        return loanStatusRepository.findByNameIgnoreCase(name)
+                .orElseThrow(() -> new ResourceNotFoundException("Статус выдачи не найден: " + name));
+    }
+
+    private ItemStatus itemStatus(String name) {
+        return itemStatusRepository.findByNameIgnoreCase(name)
+                .orElseThrow(() -> new ResourceNotFoundException("Статус экземпляра не найден: " + name));
+    }
+
+    private LoanDto toDto(Loan loan) {
+        ItemCopy copy = loan.getCopy();
+        LibraryItem item = copy != null ? copy.getItem() : null;
+        return new LoanDto(
+                loan.getId(),
+                loan.getUser() != null ? loan.getUser().getId() : null,
+                loan.getUser() != null ? loan.getUser().getFullName() : null,
+                copy != null ? copy.getId() : null,
+                copy != null ? copy.getInventoryNumber() : null,
+                item != null ? item.getTitle() : null,
+                loan.getLoanDate(),
+                loan.getDueDate(),
+                loan.getReturnDate(),
+                loan.getStatus() != null ? loan.getStatus().getId() : null,
+                loan.getStatus() != null ? loan.getStatus().getName() : null
+        );
     }
 }

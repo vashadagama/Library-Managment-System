@@ -2,7 +2,6 @@ package com.example.lims.controller;
 
 import com.example.lims.dto.BookCreateDto;
 import com.example.lims.dto.BookDto;
-import com.example.lims.enums.BookGenre;
 import com.example.lims.service.BookService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -50,8 +49,8 @@ public class BookController {
     }
 
     @GetMapping("/filter/genre")
-    public List<BookDto> getByGenre(@RequestParam BookGenre genre) {
-        return bookService.getBooksByGenre(genre);
+    public List<BookDto> getByGenre(@RequestParam UUID genreId) {
+        return bookService.getBooksByGenre(genreId);
     }
 
     @GetMapping("/filter/publisher")
@@ -62,13 +61,13 @@ public class BookController {
     @GetMapping("/search")
     public Page<BookDto> searchBooks(
             @RequestParam(required = false) String title,
-            @RequestParam(required = false) BookGenre genre,
-            @RequestParam(required = false) String publisher,
+            @RequestParam(required = false) UUID genreId,
+            @RequestParam(required = false) UUID publisherId,
             @RequestParam(required = false) Integer yearFrom,
             @RequestParam(required = false) Integer yearTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return bookService.searchBooks(title, genre, publisher, yearFrom, yearTo, page, size);
+        return bookService.searchBooks(title, genreId, publisherId, yearFrom, yearTo, page, size);
     }
 }

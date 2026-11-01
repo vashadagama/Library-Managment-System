@@ -3,12 +3,18 @@ package com.example.lims.entity.user;
 import com.example.lims.entity.status.Role;
 import com.example.lims.entity.status.UserStatus;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
 @Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
 public class User {
 
     @Id
@@ -17,8 +23,10 @@ public class User {
 
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
+
     @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
+
     @Column(name = "middle_name", length = 100)
     private String middleName;
 
@@ -45,9 +53,16 @@ public class User {
     @JoinColumn(name = "status_id", nullable = false)
     private UserStatus status;
 
+    public String getFullName() {
+        String full = firstName + " " + lastName;
+        if (middleName != null && !middleName.isBlank()) {
+            full += " " + middleName;
+        }
+        return full;
+    }
 
     @PrePersist
-    void onCreate(){
+    void onCreate() {
         if (registrationDate == null) {
             registrationDate = LocalDate.now();
         }

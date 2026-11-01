@@ -1,18 +1,12 @@
 package com.example.lims.dto;
 
-import com.example.lims.enums.ItemStatus;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 public class ItemCopyStatusUpdateDto {
 
-    @NotNull(message = "Статус обязателен")
-    private ItemStatus status;
+    @NotBlank(message = "Статус обязателен")
+    private String status;
 
-    public ItemStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ItemStatus status) {
-        this.status = status;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

@@ -1,15 +1,16 @@
 package com.example.lims.service;
 
-import com.example.lims.dto.UserDto;
 import com.example.lims.dto.UserCreateDto;
-import com.example.lims.enums.LoanStatus;
-import com.example.lims.enums.UserRole;
-import com.example.lims.enums.UserStatus;
+import com.example.lims.dto.UserDto;
+import com.example.lims.entity.status.Role;
+import com.example.lims.entity.status.UserStatus;
+import com.example.lims.entity.user.User;
 import com.example.lims.exception.BusinessLogicException;
 import com.example.lims.exception.ResourceNotFoundException;
-import com.example.lims.model.User;
 import com.example.lims.repository.LoanRepository;
+import com.example.lims.repository.RoleRepository;
 import com.example.lims.repository.UserRepository;
+import com.example.lims.repository.UserStatusRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,131 +20,144 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class UserService {
+
+    private static final String ROLE_READER = "READER";
+    private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final List<String> ACTIVE_LOAN_STATUSES = List.of("ACTIVE", "RENEWED", "OVERDUE");
+
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
+    private final UserStatusRepository userStatusRepository;
     private final LoanRepository loanRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final SystemParameterService systemParameterService;
 
     public UserService(UserRepository userRepository,
+                       RoleRepository roleRepository,
+                       UserStatusRepository userStatusRepository,
+                       LoanRepository loanRepository,
                        PasswordEncoder passwordEncoder,
-                       LoanRepository loanRepository) {
+                       SystemParameterService systemParameterService) {
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.roleRepository = roleRepository;
+        this.userStatusRepository = userStatusRepository;
         this.loanRepository = loanRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.systemParameterService = systemParameterService;
     }
 
     @Transactional(readOnly = true)
     public Page<UserDto> getAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<User> users = userRepository.findAll(pageable);
         Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
-        return users.map(user -> new UserDto(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole(),
-                activeLoansMap.getOrDefault(user.getId(), 0L).intValue()
-        ));
+        return userRepository.findAll(pageable)
+                .map(user -> toDto(user, activeLoansMap.getOrDefault(user.getId(), 0L).intValue()));
     }
 
     @Transactional(readOnly = true)
     public List<UserDto> getAllUsersList() {
-        List<User> users = userRepository.findAll();
         Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
-        return users.stream()
-                .map(user -> new UserDto(
-                        user.getId(),
-                        user.getFullName(),
-                        user.getEmail(),
-                        user.getRole(),
-                        activeLoansMap.getOrDefault(user.getId(), 0L).intValue()
-                ))
+        return userRepository.findAll().stream()
+                .map(user -> toDto(user, activeLoansMap.getOrDefault(user.getId(), 0L).intValue()))
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public User createUser(UserCreateDto dto) {
-        Optional<User> existingUser = userRepository.findByEmail(dto.getEmail());
-        if (existingUser.isPresent()) {
+    public UserDto createUser(UserCreateDto dto) {
+        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new BusinessLogicException("Пользователь с email " + dto.getEmail() + " уже существует!");
         }
 
-        UserRole role = dto.getRole() != null ? dto.getRole() : UserRole.READER;
+        String roleName = dto.getRole() != null && !dto.getRole().isBlank()
+                ? dto.getRole().toUpperCase()
+                : ROLE_READER;
+        Role role = roleRepository.findByNameIgnoreCase(roleName)
+                .orElseThrow(() -> new ResourceNotFoundException("Роль не найдена: " + roleName));
+        UserStatus status = userStatusRepository.findByNameIgnoreCase(STATUS_ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Статус пользователя ACTIVE не найден"));
 
-        if (role == UserRole.READER) {
-            User reader = User.createReader(
-                    dto.getFirstName(),
-                    dto.getLastName(),
-                    dto.getPatronimyc(),
-                    dto.getEmail(),
-                    "LIB-" + System.currentTimeMillis()
-            );
-            return userRepository.save(reader);
-        } else {
-            if (dto.getPassword() == null || dto.getPassword().isBlank()) {
-                throw new BusinessLogicException("Пароль обязателен для роли " + role.getDisplayName());
-            }
-
-            User staff = new User(
-                    dto.getFirstName(),
-                    dto.getLastName(),
-                    dto.getPatronimyc(),
-                    dto.getEmail(),
-                    role,
-                    passwordEncoder.encode(dto.getPassword()),
-                    "LIB-" + System.currentTimeMillis()
-            );
-            return userRepository.save(staff);
+        boolean isReader = ROLE_READER.equalsIgnoreCase(role.getName());
+        if (!isReader && (dto.getPassword() == null || dto.getPassword().isBlank())) {
+            throw new BusinessLogicException("Пароль обязателен для роли " + role.getName());
         }
+
+        User user = new User();
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setMiddleName(dto.getMiddleName());
+        user.setEmail(dto.getEmail());
+        user.setLibraryCardNumber(generateLibraryCardNumber());
+        user.setRole(role);
+        user.setStatus(status);
+        user.setMaxActiveLoans(systemParameterService.getInt("max_active_loans_default", 5));
+        user.setPasswordHash(isReader ? null : passwordEncoder.encode(dto.getPassword()));
+
+        return toDto(userRepository.save(user), 0);
     }
 
     @Transactional
-    public User changeUserStatus(UUID userId, UserStatus newStatus) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+    public UserDto changeUserStatus(UUID userId, String statusName) {
+        User user = getUser(userId);
+        UserStatus newStatus = userStatusRepository.findByNameIgnoreCase(statusName)
+                .orElseThrow(() -> new ResourceNotFoundException("Статус пользователя не найден: " + statusName));
         user.setStatus(newStatus);
-        return userRepository.save(user);
+        return toDto(userRepository.save(user), activeLoansCount(userId));
     }
 
     @Transactional
-    public User updateMaxLoansLimit(UUID userId, Integer newLimit) {
-        if (newLimit < 0) {
+    public UserDto updateMaxLoansLimit(UUID userId, Integer newLimit) {
+        if (newLimit == null || newLimit < 0) {
             throw new BusinessLogicException("Лимит не может быть меньше нуля");
         }
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+        User user = getUser(userId);
         user.setMaxActiveLoans(newLimit);
-        return userRepository.save(user);
+        return toDto(userRepository.save(user), activeLoansCount(userId));
     }
 
     @Transactional(readOnly = true)
     public List<UserDto> searchUsers(String search) {
-        List<User> users = userRepository.searchUsers(search);
         Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
-        return users.stream()
-                .map(user -> new UserDto(
-                        user.getId(),
-                        user.getFullName(),
-                        user.getEmail(),
-                        user.getRole(),
-                        activeLoansMap.getOrDefault(user.getId(), 0L).intValue()
-                ))
+        return userRepository.searchUsers(search).stream()
+                .map(user -> toDto(user, activeLoansMap.getOrDefault(user.getId(), 0L).intValue()))
                 .collect(Collectors.toList());
     }
 
+    private User getUser(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+    }
+
+    private int activeLoansCount(UUID userId) {
+        return (int) loanRepository.countByUserIdAndStatusNames(userId, ACTIVE_LOAN_STATUSES);
+    }
+
     private Map<UUID, Long> getActiveLoansCountMap() {
-        List<Object[]> results = loanRepository.countActiveLoansByUser(
-                List.of(LoanStatus.ACTIVE, LoanStatus.RENEWED, LoanStatus.OVERDUE)
-        );
-        return results.stream()
+        return loanRepository.countActiveLoansByUser(ACTIVE_LOAN_STATUSES).stream()
                 .collect(Collectors.toMap(
                         row -> (UUID) row[0],
-                        row -> (Long) row[1]
+                        row -> ((Number) row[1]).longValue()
                 ));
+    }
+
+    private UserDto toDto(User user, int activeLoansCount) {
+        return new UserDto(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole() != null ? user.getRole().getName() : null,
+                user.getStatus() != null ? user.getStatus().getName() : null,
+                user.getLibraryCardNumber(),
+                user.getMaxActiveLoans(),
+                activeLoansCount
+        );
+    }
+
+    private String generateLibraryCardNumber() {
+        return "LIB-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }
