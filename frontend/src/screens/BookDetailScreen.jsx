@@ -1,101 +1,143 @@
-import { useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { getBook, getBookCopies, addCopy, updateCopyStatus } from '../api/books';
-import { issueByCopy } from '../api/loans';
-import { toast } from 'react-toastify';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { getBook } from '../api/books';
+import { useAuth } from '../context/AuthContext';
+import { getErrorMessage } from '../utils/errors';
+import { formatDate } from '../utils/format';
+import { genreLabel } from '../utils/labels';
+import CopiesPanel from '../components/CopiesPanel';
+import Icon from '../components/Icon';
+import PageHeader from '../components/PageHeader';
 
 const BookDetailScreen = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [book, setBook] = useState(null);
-  const [copies, setCopies] = useState([]);
-  const [invNumber, setInvNumber] = useState('');
-  const [userId, setUserId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const canManage = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_LIBRARIAN';
+  const canDelete = user?.role === 'ROLE_ADMIN';
 
-  const fetchData = () => {
-    getBook(id).then(res => setBook(res.data));
-    getBookCopies(id).then(res => setCopies(res.data));
-  };
+  const loadBook = useCallback(async () => {
+    setLoading(true);
+    setError('');
 
-  useEffect(() => { fetchData(); }, [id]);
-
-  const handleAddCopy = async () => {
-    if (!invNumber.trim()) {
-      toast.warning('Введите инвентарный номер');
-      return;
-    }
     try {
-      await addCopy({ libraryItemId: id, inventoryNumber: invNumber.trim() });
-      toast.success('Экземпляр добавлен');
-      setInvNumber('');
-      fetchData();
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+      const response = await getBook(id);
+      setBook(response.data);
+    } catch (loadError) {
+      setBook(null);
+      setError(getErrorMessage(loadError, 'Не удалось загрузить книгу'));
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [id]);
 
-  const handleStatusChange = async (copyId, status) => {
-    try {
-      await updateCopyStatus(copyId, status);
-      toast.success('Статус обновлён');
-      fetchData();
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
-    }
-  };
+  useEffect(() => {
+    loadBook();
+  }, [loadBook, reloadKey]);
 
-  const handleIssue = async (copyId) => {
-    if (!userId.trim()) {
-      toast.warning('Введите ID читателя');
-      return;
-    }
-    try {
-      await issueByCopy(userId.trim(), copyId);
-      toast.success('Книга выдана');
-      fetchData();
-      setUserId('');
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
-    }
-  };
+  if (loading) {
+    return <div className="loading-state">Загрузка книги…</div>;
+  }
 
-  if (!book) return <div>Загрузка...</div>;
+  if (error || !book) {
+    return (
+      <div className="screen">
+        <PageHeader
+          title="Книга"
+          icon="book"
+          breadcrumbs={<Link to="/catalog?type=books">Каталог</Link>}
+        />
+        <div className="error-state">
+          <strong>Книга не загружена</strong>
+          {error || 'Книга не найдена'}
+          <div className="form-actions">
+            <button type="button" className="retro-btn retro-btn--small" onClick={loadBook}>
+              <Icon name="refresh" size={13} /> Повторить
+            </button>
+            <button type="button" className="retro-btn retro-btn--small" onClick={() => navigate('/catalog?type=books')}>
+              <Icon name="arrowLeft" size={13} /> В каталог
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2>{book.title}</h2>
-      <p>{book.authors?.map(a => `${a.firstName} ${a.lastName}`).join(', ')}</p>
-      <p>ISBN: {book.isbn} | Жанр: {book.genre}</p>
+    <div className="screen">
+      <PageHeader
+        title={book.title}
+        subtitle={book.authors?.map((author) => author.fullName).join(', ') || 'Авторы не указаны'}
+        icon="book"
+        breadcrumbs={
+          <>
+            <Link to="/catalog?type=books">Каталог</Link>
+            <span>/</span>
+            <span>{book.title}</span>
+          </>
+        }
+        actions={
+          <>
+            <button type="button" className="retro-btn" onClick={() => navigate('/catalog?type=books')}>
+              <Icon name="arrowLeft" size={13} /> Назад
+            </button>
+            <button type="button" className="retro-btn" onClick={() => navigate(`/issue/${book.id}?type=books`)}>
+              <Icon name="loans" size={13} /> Выдать
+            </button>
+            {canManage ? (
+              <button type="button" className="retro-btn primary" onClick={() => navigate(`/books/edit/${book.id}`)}>
+                <Icon name="edit" size={13} /> Изменить
+              </button>
+            ) : null}
+          </>
+        }
+      />
 
-      <h3>Экземпляры</h3>
-      <div>
-        <input placeholder="Инв. номер" value={invNumber} onChange={e => setInvNumber(e.target.value)} />
-        <button onClick={handleAddCopy}>Добавить экземпляр</button>
-      </div>
-      <table>
-        <thead><tr><th>Инв.номер</th><th>Статус</th><th>Действия</th></tr></thead>
-        <tbody>
-          {copies.map(c => (
-            <tr key={c.id}>
-              <td>{c.inventoryNumber}</td>
-              <td>{c.status}</td>
-              <td>
-                <select onChange={(e) => handleStatusChange(c.id, e.target.value)} defaultValue="">
-                  <option value="" disabled>Изменить статус</option>
-                  <option value="AVAILABLE">Доступно</option>
-                  <option value="UNDER_REPAIR">На ремонте</option>
-                  <option value="LOST">Утеряно</option>
-                </select>
-                {c.status === 'AVAILABLE' && (
-                  <div>
-                    <input placeholder="ID читателя" value={userId} onChange={e => setUserId(e.target.value)} />
-                    <button onClick={() => handleIssue(c.id)}>Выдать</button>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <section className="retro-panel panel">
+        <div className="section-title">
+          <span><Icon name="info" size={14} /> Сведения о книге</span>
+        </div>
+        <div className="meta-grid">
+          <div className="meta-row">
+            <span className="meta-row__label">Авторы</span>
+            <span className="meta-row__value">{book.authors?.map((author) => author.fullName).join(', ') || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Издательство</span>
+            <span className="meta-row__value">{book.publisherName || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Жанр</span>
+            <span className="meta-row__value">{genreLabel(book.genreName)}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Язык</span>
+            <span className="meta-row__value">{book.languageName || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Дата издания</span>
+            <span className="meta-row__value">{formatDate(book.publicationDate)}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">ISBN</span>
+            <span className="meta-row__value">{book.isbn || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Страниц</span>
+            <span className="meta-row__value">{book.pageCount ?? '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Расположение</span>
+            <span className="meta-row__value">{book.locationName || '—'}</span>
+          </div>
+        </div>
+      </section>
+
+      <CopiesPanel itemId={book.id} canManage={canManage} canDelete={canDelete} />
     </div>
   );
 };

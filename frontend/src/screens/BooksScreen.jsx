@@ -3,6 +3,7 @@ import { getBooks, deleteBook, searchBooks } from '../api/books';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import { genreLabel } from '../utils/labels';
 
 const BooksScreen = () => {
   const [books, setBooks] = useState([]);
@@ -54,7 +55,7 @@ const BooksScreen = () => {
             <tr key={b.id}>
               <td>{b.title}</td>
               <td>{b.authors?.map(a => a.lastName).join(', ')}</td>
-              <td>{b.genre}</td>
+              <td>{genreLabel(b.genreName)}</td>
               <td>
                 <button onClick={() => navigate(`/books/${b.id}`)}>Экземпляры</button>
                 {user?.role === 'ROLE_ADMIN' && <button onClick={() => handleDelete(b.id)}>Удалить</button>}

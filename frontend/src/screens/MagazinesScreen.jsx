@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getMagazines, deleteMagazine } from '../api/magazines';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { genreLabel } from '../utils/labels';
 
 const MagazinesScreen = () => {
   const [magazines, setMagazines] = useState([]);
@@ -28,7 +29,7 @@ const MagazinesScreen = () => {
           {magazines.map(m => (
             <tr key={m.id}>
               <td>{m.title}</td>
-              <td>{m.genre}</td>
+              <td>{genreLabel(m.genreName)}</td>
               <td>
                 <button onClick={() => navigate(`/magazines/${m.id}`)}>Экземпляры</button>
                 {user?.role === 'ROLE_ADMIN' && <button onClick={() => handleDelete(m.id)}>Удалить</button>}

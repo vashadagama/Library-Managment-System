@@ -1,101 +1,143 @@
-import { useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { getMagazine, getMagazineCopies, addCopy, updateCopyStatus } from '../api/magazines';
-import { issueByCopy } from '../api/loans';
-import { toast } from 'react-toastify';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { getMagazine } from '../api/magazines';
+import { useAuth } from '../context/AuthContext';
+import { getErrorMessage } from '../utils/errors';
+import { formatDate } from '../utils/format';
+import { genreLabel } from '../utils/labels';
+import CopiesPanel from '../components/CopiesPanel';
+import Icon from '../components/Icon';
+import PageHeader from '../components/PageHeader';
 
 const MagazineDetailScreen = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [magazine, setMagazine] = useState(null);
-  const [copies, setCopies] = useState([]);
-  const [invNumber, setInvNumber] = useState('');
-  const [userId, setUserId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const canManage = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_LIBRARIAN';
+  const canDelete = user?.role === 'ROLE_ADMIN';
 
-  const fetchData = () => {
-    getMagazine(id).then(res => setMagazine(res.data));
-    getMagazineCopies(id).then(res => setCopies(res.data));
-  };
+  const loadMagazine = useCallback(async () => {
+    setLoading(true);
+    setError('');
 
-  useEffect(() => { fetchData(); }, [id]);
-
-  const handleAddCopy = async () => {
-    if (!invNumber.trim()) {
-      toast.warning('Введите инвентарный номер');
-      return;
-    }
     try {
-      await addCopy({ libraryItemId: id, inventoryNumber: invNumber.trim() });
-      toast.success('Экземпляр добавлен');
-      setInvNumber('');
-      fetchData();
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+      const response = await getMagazine(id);
+      setMagazine(response.data);
+    } catch (loadError) {
+      setMagazine(null);
+      setError(getErrorMessage(loadError, 'Не удалось загрузить журнал'));
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [id]);
 
-  const handleStatusChange = async (copyId, status) => {
-    try {
-      await updateCopyStatus(copyId, status);
-      toast.success('Статус обновлён');
-      fetchData();
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
-    }
-  };
+  useEffect(() => {
+    loadMagazine();
+  }, [loadMagazine, reloadKey]);
 
-  const handleIssue = async (copyId) => {
-    if (!userId.trim()) {
-      toast.warning('Введите ID читателя');
-      return;
-    }
-    try {
-      await issueByCopy(userId.trim(), copyId);
-      toast.success('Журнал выдан');
-      fetchData();
-      setUserId('');
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
-    }
-  };
+  if (loading) {
+    return <div className="loading-state">Загрузка журнала…</div>;
+  }
 
-  if (!magazine) return <div>Загрузка...</div>;
+  if (error || !magazine) {
+    return (
+      <div className="screen">
+        <PageHeader
+          title="Журнал"
+          icon="magazine"
+          breadcrumbs={<Link to="/catalog?type=magazines">Каталог</Link>}
+        />
+        <div className="error-state">
+          <strong>Журнал не загружен</strong>
+          {error || 'Журнал не найден'}
+          <div className="form-actions">
+            <button type="button" className="retro-btn retro-btn--small" onClick={loadMagazine}>
+              <Icon name="refresh" size={13} /> Повторить
+            </button>
+            <button type="button" className="retro-btn retro-btn--small" onClick={() => navigate('/catalog?type=magazines')}>
+              <Icon name="arrowLeft" size={13} /> В каталог
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2>{magazine.title}</h2>
-      <p>Издатель: {magazine.publisher}</p>
-      <p>ISSN: {magazine.issn} | Жанр: {magazine.genre}</p>
+    <div className="screen">
+      <PageHeader
+        title={magazine.title}
+        subtitle={magazine.publisherName || 'Издательство не указано'}
+        icon="magazine"
+        breadcrumbs={
+          <>
+            <Link to="/catalog?type=magazines">Каталог</Link>
+            <span>/</span>
+            <span>{magazine.title}</span>
+          </>
+        }
+        actions={
+          <>
+            <button type="button" className="retro-btn" onClick={() => navigate('/catalog?type=magazines')}>
+              <Icon name="arrowLeft" size={13} /> Назад
+            </button>
+            <button type="button" className="retro-btn" onClick={() => navigate(`/issue/${magazine.id}?type=magazines`)}>
+              <Icon name="loans" size={13} /> Выдать
+            </button>
+            {canManage ? (
+              <button type="button" className="retro-btn primary" onClick={() => navigate(`/magazines/edit/${magazine.id}`)}>
+                <Icon name="edit" size={13} /> Изменить
+              </button>
+            ) : null}
+          </>
+        }
+      />
 
-      <h3>Экземпляры</h3>
-      <div>
-        <input placeholder="Инв. номер" value={invNumber} onChange={e => setInvNumber(e.target.value)} />
-        <button onClick={handleAddCopy}>Добавить экземпляр</button>
-      </div>
-      <table>
-        <thead><tr><th>Инв.номер</th><th>Статус</th><th>Действия</th></tr></thead>
-        <tbody>
-          {copies.map(c => (
-            <tr key={c.id}>
-              <td>{c.inventoryNumber}</td>
-              <td>{c.status}</td>
-              <td>
-                <select onChange={(e) => handleStatusChange(c.id, e.target.value)} defaultValue="">
-                  <option value="" disabled>Изменить статус</option>
-                  <option value="AVAILABLE">Доступно</option>
-                  <option value="UNDER_REPAIR">На ремонте</option>
-                  <option value="LOST">Утеряно</option>
-                </select>
-                {c.status === 'AVAILABLE' && (
-                  <div>
-                    <input placeholder="ID читателя" value={userId} onChange={e => setUserId(e.target.value)} />
-                    <button onClick={() => handleIssue(c.id)}>Выдать</button>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <section className="retro-panel panel">
+        <div className="section-title">
+          <span><Icon name="info" size={14} /> Сведения о журнале</span>
+        </div>
+        <div className="meta-grid">
+          <div className="meta-row">
+            <span className="meta-row__label">Издательство</span>
+            <span className="meta-row__value">{magazine.publisherName || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Жанр</span>
+            <span className="meta-row__value">{genreLabel(magazine.genreName)}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Язык</span>
+            <span className="meta-row__value">{magazine.languageName || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Дата выпуска</span>
+            <span className="meta-row__value">{formatDate(magazine.publicationDate)}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">ISSN</span>
+            <span className="meta-row__value">{magazine.issn || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Страниц</span>
+            <span className="meta-row__value">{magazine.pageCount ?? '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Расположение</span>
+            <span className="meta-row__value">{magazine.locationName || '—'}</span>
+          </div>
+          <div className="meta-row">
+            <span className="meta-row__label">Обложка</span>
+            <span className="meta-row__value">{magazine.hasGlossyCover ? 'Глянцевая' : 'Обычная'}</span>
+          </div>
+        </div>
+      </section>
+
+      <CopiesPanel itemId={magazine.id} canManage={canManage} canDelete={canDelete} />
     </div>
   );
 };
