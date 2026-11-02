@@ -1,144 +1,414 @@
-import { useState, useEffect } from 'react';
-import { getReaders, createReader, changeUserStatus, updateMaxLoans, searchReaders } from '../api/readers';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import {
+  changeUserStatus,
+  createReader,
+  getReaders,
+  searchReaders,
+  updateMaxLoans,
+} from '../api/readers';
+import { useAuth } from '../context/AuthContext';
+import { getErrorMessage } from '../utils/errors';
+import { userRoleLabel, userStatusLabel, statusTone } from '../utils/labels';
+import useDebouncedValue from '../hooks/useDebouncedValue';
+import Dialog from '../components/Dialog';
+import Icon from '../components/Icon';
+import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+
+const emptyReader = {
+  firstName: '',
+  lastName: '',
+  middleName: '',
+  email: '',
+};
 
 const ReadersScreen = () => {
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ROLE_ADMIN';
+
   const [readers, setReaders] = useState([]);
-  const [search, setSearch] = useState('');
-  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '' });
+  const [search, setSearch] = useState(() => searchParams.get('search') || '');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [busyId, setBusyId] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(emptyReader);
+  const [createError, setCreateError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [limitTarget, setLimitTarget] = useState(null);
+  const [limitValue, setLimitValue] = useState('');
+  const [limitError, setLimitError] = useState('');
+  const [savingLimit, setSavingLimit] = useState(false);
+  const debouncedSearch = useDebouncedValue(search, 350);
 
-  const fetchReaders = async () => {
+  const loadReaders = useCallback(async () => {
     setLoading(true);
+    setError('');
+
     try {
-      let res;
-      if (search.trim()) {
-        res = await searchReaders(search);
-        setReaders(res.data);
-        setTotalPages(1);
+      if (debouncedSearch.trim()) {
+        const response = await searchReaders(debouncedSearch.trim());
+        const list = Array.isArray(response.data) ? response.data : [];
+        setReaders(list);
+        setTotalPages(list.length > 0 ? 1 : 0);
+        setTotalElements(list.length);
       } else {
-        res = await getReaders(page, 10);
-        setReaders(res.data.content);
-        setTotalPages(res.data.totalPages);
+        const response = await getReaders(page, 10);
+        setReaders(response.data?.content || []);
+        setTotalPages(response.data?.totalPages || 0);
+        setTotalElements(response.data?.totalElements || 0);
       }
-    } catch (err) {
-      toast.error('Ошибка загрузки читателей');
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, 'Не удалось загрузить читателей'));
+      setReaders([]);
+      setTotalPages(0);
+      setTotalElements(0);
     } finally {
       setLoading(false);
     }
+  }, [page, debouncedSearch]);
+
+  useEffect(() => {
+    loadReaders();
+  }, [loadReaders, reloadKey]);
+
+  const reload = () => setReloadKey((key) => key + 1);
+
+  const handleStatus = async (reader) => {
+    const nextStatus = reader.statusName === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+    setBusyId(reader.id);
+
+    try {
+      await changeUserStatus(reader.id, nextStatus);
+      toast.success(nextStatus === 'BLOCKED' ? 'Читатель заблокирован' : 'Читатель активирован');
+      reload();
+    } catch (statusError) {
+      toast.error(getErrorMessage(statusError, 'Не удалось изменить статус'));
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  useEffect(() => { fetchReaders(); }, [page, search]);
+  const openCreate = () => {
+    setCreateForm(emptyReader);
+    setCreateError('');
+    setCreateOpen(true);
+  };
 
-  const handleCreate = async () => {
-    if (!newUser.firstName || !newUser.lastName || !newUser.email) {
-      toast.warning('Заполните все поля');
+  const closeCreate = () => {
+    if (creating) return;
+    setCreateOpen(false);
+    setCreateError('');
+  };
+
+  const saveReader = async () => {
+    if (!createForm.firstName.trim() || !createForm.lastName.trim() || !createForm.email.trim()) {
+      setCreateError('Заполните имя, фамилию и email');
       return;
     }
+
+    setCreating(true);
+    setCreateError('');
+
     try {
-      await createReader({ ...newUser, role: 'READER' });
-      toast.success('Читатель создан');
-      setNewUser({ firstName: '', lastName: '', email: '' });
-      fetchReaders();
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+      await createReader({
+        firstName: createForm.firstName.trim(),
+        lastName: createForm.lastName.trim(),
+        middleName: createForm.middleName.trim() || null,
+        email: createForm.email.trim(),
+        role: 'READER',
+      });
+      toast.success('Читатель зарегистрирован');
+      setCreateOpen(false);
+      setCreateForm(emptyReader);
+      setPage(0);
+      reload();
+    } catch (createReaderError) {
+      setCreateError(getErrorMessage(createReaderError, 'Не удалось создать читателя'));
+    } finally {
+      setCreating(false);
     }
   };
 
-  const handleStatus = async (id, status) => {
-    try {
-      await changeUserStatus(id, status);
-      toast.success('Статус обновлён');
-      fetchReaders();
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
-    }
+  const openLimit = (reader) => {
+    setLimitTarget(reader);
+    setLimitValue(String(reader.maxActiveLoans ?? 5));
+    setLimitError('');
   };
 
-  const handleMaxLoans = async (id, max) => {
+  const saveLimit = async () => {
+    if (!limitTarget) return;
+
+    const value = Number(limitValue);
+    if (!Number.isInteger(value) || value < 0) {
+      setLimitError('Лимит должен быть целым неотрицательным числом');
+      return;
+    }
+
+    setSavingLimit(true);
+    setLimitError('');
+
     try {
-      await updateMaxLoans(id, max);
+      await updateMaxLoans(limitTarget.id, value);
       toast.success('Лимит обновлён');
-      fetchReaders();
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+      setLimitTarget(null);
+      reload();
+    } catch (limitSaveError) {
+      setLimitError(getErrorMessage(limitSaveError, 'Не удалось обновить лимит'));
+    } finally {
+      setSavingLimit(false);
     }
   };
+
+  const hasSearch = Boolean(search.trim());
 
   return (
-    <div>
-      <h2>👥 Читатели</h2>
+    <div className="screen">
+      <PageHeader
+        title="Читатели"
+        subtitle="Регистрация, блокировка и лимиты выдач"
+        icon="readers"
+        actions={
+          <>
+            <button type="button" className="retro-btn" onClick={reload}>
+              <Icon name="refresh" size={13} /> Обновить
+            </button>
+            <button type="button" className="retro-btn primary" onClick={openCreate}>
+              <Icon name="plus" size={13} /> Новый читатель
+            </button>
+          </>
+        }
+      />
 
-      <div className="search-bar">
-        <input
-          placeholder="Поиск по имени или email..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <h3>Зарегистрировать нового</h3>
-        <div className="search-bar">
-          <input placeholder="Имя" value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} />
-          <input placeholder="Фамилия" value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} />
-          <input placeholder="Email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
-          <button onClick={handleCreate}>Создать</button>
+      <div className="filter-bar">
+        <div className="filter-field filter-field--grow">
+          <span>Поиск читателя</span>
+          <div className="search-field">
+            <span className="search-icon"><Icon name="search" size={14} /></span>
+            <input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(0);
+              }}
+              placeholder="ФИО, email или читательский билет…"
+            />
+          </div>
+        </div>
+        <div className="filter-actions">
+          <button
+            type="button"
+            className="retro-btn"
+            onClick={() => {
+              setSearch('');
+              setPage(0);
+            }}
+            disabled={!hasSearch}
+          >
+            Сбросить
+          </button>
         </div>
       </div>
 
-      <div className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>ФИО</th>
-              <th>Email</th>
-              <th>Статус</th>
-              <th>Взято сейчас</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {readers.map(r => (
-              <tr key={r.id}>
-                <td>{r.fullName}</td>
-                <td>{r.email}</td>
-                <td>
-                  <span className={`badge ${r.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
-                    {r.status || 'ACTIVE'}
-                  </span>
-                </td>
-                <td style={{ textAlign: 'center' }}>{r.activeLoansCount ?? 0}</td>
-                <td>
-                  <button className="warning" onClick={() => handleStatus(r.id, 'FROZEN')}>Заморозить</button>
-                  <button className="success" onClick={() => handleStatus(r.id, 'ACTIVE')}>Активировать</button>
-                  <input
-                    type="number"
-                    defaultValue={r.maxActiveLoans}
-                    onBlur={(e) => handleMaxLoans(r.id, parseInt(e.target.value))}
-                    style={{ width: '60px', marginLeft: '5px' }}
-                    title="Лимит выдачи"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {loading && <p>Загрузка...</p>}
-      </div>
+      {loading ? (
+        <div className="loading-state">Загрузка читателей…</div>
+      ) : error ? (
+        <div className="error-state">
+          <strong>Ошибка загрузки</strong>
+          {error}
+          <div className="form-actions">
+            <button type="button" className="retro-btn retro-btn--small" onClick={reload}>
+              <Icon name="refresh" size={13} /> Повторить
+            </button>
+          </div>
+        </div>
+      ) : readers.length === 0 ? (
+        <div className="empty-state">
+          <strong>{hasSearch ? 'Читатели не найдены' : 'Читателей пока нет'}</strong>
+          {hasSearch ? 'Измените поисковый запрос.' : 'Зарегистрируйте первого читателя.'}
+        </div>
+      ) : (
+        <>
+          <div className="table-wrap">
+            <table className="retro-table">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Email</th>
+                  <th>Билет</th>
+                  <th>Роль</th>
+                  <th>Статус</th>
+                  <th>На руках</th>
+                  <th>Лимит</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {readers.map((reader) => {
+                  const busy = busyId === reader.id;
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '10px',
-        marginTop: '20px'
-      }}>
-        <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Назад</button>
-        <span style={{ alignSelf: 'center' }}>Страница {page + 1} из {totalPages}</span>
-        <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Вперёд →</button>
-      </div>
+                  return (
+                    <tr key={reader.id}>
+                      <td className="title-cell">{reader.fullName}</td>
+                      <td>{reader.email}</td>
+                      <td className="nowrap">{reader.libraryCardNumber || '—'}</td>
+                      <td>{userRoleLabel(reader.roleName)}</td>
+                      <td>
+                        <span className={`badge ${statusTone(reader.statusName)}`}>
+                          {userStatusLabel(reader.statusName)}
+                        </span>
+                      </td>
+                      <td className="num">{reader.activeLoansCount ?? 0}</td>
+                      <td className="num">{reader.maxActiveLoans ?? '—'}</td>
+                      <td>
+                        <div className="row-actions">
+                          {isAdmin ? (
+                            <>
+                              <button
+                                type="button"
+                                className={`retro-btn retro-btn--small ${reader.statusName === 'ACTIVE' ? 'danger' : 'success'}`}
+                                onClick={() => handleStatus(reader)}
+                                disabled={busy}
+                              >
+                                {reader.statusName === 'ACTIVE' ? 'Заблокировать' : 'Активировать'}
+                              </button>
+                              <button
+                                type="button"
+                                className="retro-btn retro-btn--small"
+                                onClick={() => openLimit(reader)}
+                                disabled={busy}
+                              >
+                                Лимит
+                              </button>
+                            </>
+                          ) : (
+                            <span className="hint">Только просмотр</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="catalog-footer">
+            <span className="hint">
+              {hasSearch ? `Найдено: ${totalElements}` : `Всего читателей: ${totalElements}`}
+            </span>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              onChange={setPage}
+              disabled={hasSearch}
+            />
+          </div>
+        </>
+      )}
+
+      {createOpen ? (
+        <Dialog
+          title="Регистрация читателя"
+          icon="readers"
+          onClose={closeCreate}
+          footer={
+            <>
+              <button type="button" className="retro-btn" onClick={closeCreate} disabled={creating}>
+                Отмена
+              </button>
+              <button type="button" className="retro-btn primary" onClick={saveReader} disabled={creating}>
+                {creating ? 'Создание…' : 'Создать'}
+              </button>
+            </>
+          }
+        >
+          {createError ? <div className="form-error">{createError}</div> : null}
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="reader-last">Фамилия <span className="required">*</span></label>
+              <input
+                id="reader-last"
+                value={createForm.lastName}
+                onChange={(event) => setCreateForm((current) => ({ ...current, lastName: event.target.value }))}
+                autoFocus
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="reader-first">Имя <span className="required">*</span></label>
+              <input
+                id="reader-first"
+                value={createForm.firstName}
+                onChange={(event) => setCreateForm((current) => ({ ...current, firstName: event.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group span-2">
+              <label htmlFor="reader-middle">Отчество</label>
+              <input
+                id="reader-middle"
+                value={createForm.middleName}
+                onChange={(event) => setCreateForm((current) => ({ ...current, middleName: event.target.value }))}
+              />
+            </div>
+            <div className="form-group span-2">
+              <label htmlFor="reader-email">Email <span className="required">*</span></label>
+              <input
+                id="reader-email"
+                type="email"
+                value={createForm.email}
+                onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
+                required
+              />
+            </div>
+          </div>
+          <p className="hint">
+            Номер читательского билета и лимит выдач будут назначены автоматически.
+          </p>
+        </Dialog>
+      ) : null}
+
+      {limitTarget ? (
+        <Dialog
+          title="Лимит выдач"
+          icon="readers"
+          onClose={() => setLimitTarget(null)}
+          footer={
+            <>
+              <button type="button" className="retro-btn" onClick={() => setLimitTarget(null)} disabled={savingLimit}>
+                Отмена
+              </button>
+              <button type="button" className="retro-btn primary" onClick={saveLimit} disabled={savingLimit}>
+                {savingLimit ? 'Сохранение…' : 'Сохранить'}
+              </button>
+            </>
+          }
+        >
+          <p className="hint">Читатель: <strong>{limitTarget.fullName}</strong></p>
+          {limitError ? <div className="form-error">{limitError}</div> : null}
+          <div className="form-group">
+            <label htmlFor="reader-limit">Максимальное число активных выдач</label>
+            <input
+              id="reader-limit"
+              type="number"
+              min="0"
+              step="1"
+              value={limitValue}
+              onChange={(event) => setLimitValue(event.target.value)}
+              autoFocus
+            />
+          </div>
+        </Dialog>
+      ) : null}
     </div>
   );
 };
