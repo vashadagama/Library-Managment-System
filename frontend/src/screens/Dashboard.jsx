@@ -1,201 +1,357 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSummaryStatistics, getOverdueLoans } from '../api/statistics';
+import { getOverdueLoans, getSummaryStatistics } from '../api/loans';
 import { searchBooks } from '../api/books';
-import { getMagazines } from '../api/magazines'; // добавим
-import { searchReaders } from '../api/readers';  // добавим
+import { getMagazines } from '../api/magazines';
+import { searchReaders } from '../api/readers';
+import { getErrorMessage } from '../utils/errors';
+import { formatDate } from '../utils/format';
+import { genreLabel, loanStatusLabel, statusTone } from '../utils/labels';
+import useDebouncedValue from '../hooks/useDebouncedValue';
+import Icon from '../components/Icon';
+import PageHeader from '../components/PageHeader';
+
+const SEARCH_TYPES = {
+  book: { label: 'Книги', placeholder: 'Название книги…' },
+  magazine: { label: 'Журналы', placeholder: 'Название журнала…' },
+  reader: { label: 'Читатели', placeholder: 'Фамилия, имя или email…' },
+};
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({});
-  const [overdue, setOverdue] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState('book');
-  const [fastResults, setFastResults] = useState([]);
-  const [loadingFast, setLoadingFast] = useState(false);
   const navigate = useNavigate();
+  const [stats, setStats] = useState({ totalLoans: 0, activeLoans: 0, overdueReturns: 0 });
+  const [overdue, setOverdue] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchType, setSearchType] = useState('book');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const debouncedQuery = useDebouncedValue(query, 350);
 
-  useEffect(() => {
-    getSummaryStatistics().then(res => setStats(res.data)).catch(() => {});
-    getOverdueLoans().then(res => setOverdue(res.data.slice(0, 5))).catch(() => {});
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const [statsResponse, overdueResponse] = await Promise.all([
+        getSummaryStatistics(),
+        getOverdueLoans(),
+      ]);
+      setStats(statsResponse.data || {});
+      setOverdue(Array.isArray(overdueResponse.data) ? overdueResponse.data : []);
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, 'Не удалось загрузить данные главной панели'));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // debounced search
   useEffect(() => {
-    if (searchTerm.trim().length < 2) {
-      setFastResults([]);
+    loadDashboard();
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    const term = debouncedQuery.trim();
+
+    if (term.length < 2) {
+      setResults([]);
+      setSearchError('');
+      setSearching(false);
+      return undefined;
+    }
+
+    let ignore = false;
+    setSearching(true);
+    setSearchError('');
+
+    const request =
+      searchType === 'book'
+        ? searchBooks({ title: term, page: 0, size: 5 })
+        : searchType === 'magazine'
+          ? getMagazines(0, 5, { title: term })
+          : searchReaders(term);
+
+    request
+      .then((response) => {
+        if (ignore) return;
+        const list = Array.isArray(response.data)
+          ? response.data
+          : response.data?.content || [];
+        setResults(list);
+      })
+      .catch((searchRequestError) => {
+        if (ignore) return;
+        setResults([]);
+        setSearchError(getErrorMessage(searchRequestError, 'Поиск не выполнен'));
+      })
+      .finally(() => {
+        if (!ignore) setSearching(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [debouncedQuery, searchType]);
+
+  const showAll = () => {
+    const term = query.trim();
+    if (term.length < 2) return;
+
+    if (searchType === 'reader') {
+      navigate(`/readers?search=${encodeURIComponent(term)}`);
       return;
     }
-    const timer = setTimeout(() => {
-      setLoadingFast(true);
-      const term = searchTerm.trim();
 
-      if (searchType === 'book') {
-        const params = { title: term, size: 3, page: 0 };
-        searchBooks(params)
-          .then(res => {
-            // Для книг в ответе объект с полем content
-            setFastResults(res.data.content || []);
-          })
-          .catch(() => setFastResults([]))
-          .finally(() => setLoadingFast(false));
-      } else if (searchType === 'magazine') {
-        // Для журналов используем getMagazines с фильтром по title
-        getMagazines(0, 3, { title: term })
-          .then(res => {
-            setFastResults(res.data.content || []);
-          })
-          .catch(() => setFastResults([]))
-          .finally(() => setLoadingFast(false));
-      } else if (searchType === 'reader') {
-        searchReaders(term)
-          .then(res => {
-            // searchReaders возвращает массив читателей
-            setFastResults(res.data || []);
-          })
-          .catch(() => setFastResults([]))
-          .finally(() => setLoadingFast(false));
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm, searchType]);
-
-  const handleShowAll = () => {
-    const query = encodeURIComponent(searchTerm.trim());
-    if (searchType === 'book') {
-      navigate(`/catalog?type=books&search=${query}`);
-    } else if (searchType === 'magazine') {
-      navigate(`/catalog?type=magazines&search=${query}`);
-    } else if (searchType === 'reader') {
-      navigate(`/readers?search=${query}`);
-    }
+    navigate(`/catalog?type=${searchType === 'book' ? 'books' : 'magazines'}&search=${encodeURIComponent(term)}`);
   };
 
-  // Функция для отображения результатов в зависимости от типа
-  const renderResultItem = (item) => {
-    if (searchType === 'book') {
-      return (
-        <tr key={item.id}>
-          <td>{item.title}</td>
-          <td>{item.authors?.map(a => `${a.lastName} ${a.firstName}`).join(', ') || '—'}</td>
-        </tr>
-      );
-    } else if (searchType === 'magazine') {
-      return (
-        <tr key={item.id}>
-          <td>{item.title}</td>
-          <td>{item.publisher || '—'}</td>
-        </tr>
-      );
-    } else if (searchType === 'reader') {
-      return (
-        <tr key={item.id}>
-          <td>{item.fullName}</td>
-          <td>{item.email}</td>
-        </tr>
-      );
-    }
-    return null;
+  const openResult = (item) => {
+    if (searchType === 'book') navigate(`/books/${item.id}`);
+    else if (searchType === 'magazine') navigate(`/magazines/${item.id}`);
+    else navigate(`/readers?search=${encodeURIComponent(item.fullName || item.email || '')}`);
   };
 
-  // Заголовки таблицы в зависимости от типа
-  const getTableHeaders = () => {
-    if (searchType === 'book') {
-      return <tr><th>Название</th><th>Авторы</th></tr>;
-    } else if (searchType === 'magazine') {
-      return <tr><th>Название</th><th>Издатель</th></tr>;
-    } else if (searchType === 'reader') {
-      return <tr><th>ФИО</th><th>Email</th></tr>;
-    }
-    return null;
-  };
+  const currentSearch = SEARCH_TYPES[searchType];
+  const hasQuery = query.trim().length >= 2;
 
   return (
-    <div>
-      <h2>📋 Главная панель</h2>
+    <div className="screen">
+      <PageHeader
+        title="Главная панель"
+        subtitle="Сводка по фонду, читателям и выдаче"
+        icon="home"
+        actions={
+          <div className="quick-actions">
+            <button type="button" className="retro-btn" onClick={() => navigate('/books/new')}>
+              <Icon name="plus" size={13} /> Книга
+            </button>
+            <button type="button" className="retro-btn" onClick={() => navigate('/magazines/new')}>
+              <Icon name="plus" size={13} /> Журнал
+            </button>
+            <button type="button" className="retro-btn" onClick={() => navigate('/catalog')}>
+              <Icon name="loans" size={13} /> Выдать
+            </button>
+            <button
+              type="button"
+              className="retro-btn retro-btn--icon"
+              onClick={loadDashboard}
+              title="Обновить данные"
+            >
+              <Icon name="refresh" size={14} />
+            </button>
+          </div>
+        }
+      />
 
-      <div className="grid grid-3" style={{ marginBottom: '30px' }}>
-        <div className="stats-card">
-          <h3>Всего выдач</h3>
-          <div className="number">{stats.totalLoans || 0}</div>
+      {error ? (
+        <div className="error-state">
+          <strong>Ошибка загрузки</strong>
+          {error}
+          <div className="form-actions">
+            <button type="button" className="retro-btn retro-btn--small" onClick={loadDashboard}>
+              <Icon name="refresh" size={13} /> Повторить
+            </button>
+          </div>
         </div>
-        <div className="stats-card" style={{ background: 'linear-gradient(135deg, #27ae60, #2ecc71)' }}>
-          <h3>Активных</h3>
-          <div className="number">{stats.activeLoans || 0}</div>
+      ) : null}
+
+      <div className="stats-grid">
+        <div className="stat-card stat-card--blue">
+          <div className="stat-card__label">Всего выдач</div>
+          <div className="stat-card__value">{loading ? '…' : stats.totalLoans ?? 0}</div>
+          <div className="stat-card__hint">за всё время</div>
         </div>
-        <div className="stats-card" style={{ background: 'linear-gradient(135deg, #e74c3c, #c0392b)' }}>
-          <h3>Просрочек</h3>
-          <div className="number">{stats.overdueReturns || 0}</div>
+        <div className="stat-card stat-card--green">
+          <div className="stat-card__label">Активных</div>
+          <div className="stat-card__value">{loading ? '…' : stats.activeLoans ?? 0}</div>
+          <div className="stat-card__hint">на руках сейчас</div>
+        </div>
+        <div className="stat-card stat-card--red">
+          <div className="stat-card__label">Просрочено сейчас</div>
+          <div className="stat-card__value">{loading ? '…' : overdue.length}</div>
+          <div className="stat-card__hint">требуют внимания</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card__label">Возвратов с опозданием</div>
+          <div className="stat-card__value">{loading ? '…' : stats.overdueReturns ?? 0}</div>
+          <div className="stat-card__hint">историческая статистика</div>
         </div>
       </div>
 
-      <div className="card">
-        <h3>🔍 Быстрый поиск</h3>
-        <div className="search-bar">
-          <select value={searchType} onChange={e => { setSearchType(e.target.value); setFastResults([]); setSearchTerm(''); }}>
-            <option value="book">📚 Книги</option>
-            <option value="magazine">📰 Журналы</option>
-            <option value="reader">👤 Читатели</option>
-          </select>
-          <input
-            placeholder={
-              searchType === 'book' ? 'Название книги...' :
-              searchType === 'magazine' ? 'Название журнала...' :
-              'Фамилия или email...'
-            }
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+      <section className="retro-panel panel">
+        <div className="section-title">
+          <span><Icon name="search" size={14} /> Быстрый поиск</span>
         </div>
 
-        {/* Показываем топ-3 результата */}
-        {searchTerm.trim().length >= 2 && (
-          <div style={{ marginTop: '12px' }}>
-            {loadingFast && <p>Загрузка...</p>}
-            {!loadingFast && fastResults.length > 0 && (
-              <>
-                <table style={{ marginBottom: '8px' }}>
-                  <thead>{getTableHeaders()}</thead>
-                  <tbody>
-                    {fastResults.map(item => renderResultItem(item))}
-                  </tbody>
-                </table>
-                <button onClick={handleShowAll} style={{ background: 'var(--accent)', color: 'white', marginTop: '8px' }}>
-                  Показать все результаты →
-                </button>
-              </>
-            )}
-            {!loadingFast && fastResults.length === 0 && searchTerm.trim().length >= 2 && (
-              <p>Ничего не найдено</p>
-            )}
+        <div className="filter-bar">
+          <div className="segmented">
+            {Object.entries(SEARCH_TYPES).map(([value, config]) => (
+              <button
+                key={value}
+                type="button"
+                className={`retro-btn${searchType === value ? ' active' : ''}`}
+                onClick={() => {
+                  setSearchType(value);
+                  setResults([]);
+                  setSearchError('');
+                }}
+              >
+                {config.label}
+              </button>
+            ))}
+          </div>
+          <div className="search-field">
+            <span className="search-icon"><Icon name="search" size={14} /></span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={currentSearch.placeholder}
+            />
+          </div>
+          <button
+            type="button"
+            className="retro-btn"
+            onClick={showAll}
+            disabled={!hasQuery || searching}
+          >
+            Показать все
+          </button>
+        </div>
+
+        {searching ? <div className="loading-state">Поиск…</div> : null}
+
+        {!searching && searchError ? (
+          <div className="error-state">
+            <strong>Поиск не выполнен</strong>
+            {searchError}
+          </div>
+        ) : null}
+
+        {!searching && !searchError && hasQuery && results.length === 0 ? (
+          <div className="empty-state">Ничего не найдено. Попробуйте изменить запрос.</div>
+        ) : null}
+
+        {!searching && results.length > 0 ? (
+          <div className="quick-search">
+            <div className="quick-search__results">
+              <table className="retro-table">
+                <thead>
+                  <tr>
+                    {searchType === 'reader' ? (
+                      <>
+                        <th>ФИО</th>
+                        <th>Email</th>
+                        <th>Билет</th>
+                        <th>На руках</th>
+                      </>
+                    ) : searchType === 'book' ? (
+                      <>
+                        <th>Название</th>
+                        <th>Авторы</th>
+                        <th>Жанр</th>
+                      </>
+                    ) : (
+                      <>
+                        <th>Название</th>
+                        <th>Издательство</th>
+                        <th>Жанр</th>
+                      </>
+                    )}
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((item) => (
+                    <tr key={item.id} onClick={() => openResult(item)} style={{ cursor: 'pointer' }}>
+                      {searchType === 'reader' ? (
+                        <>
+                          <td className="title-cell">{item.fullName}</td>
+                          <td>{item.email}</td>
+                          <td>{item.libraryCardNumber || '—'}</td>
+                          <td className="num">{item.activeLoansCount ?? 0}</td>
+                        </>
+                      ) : searchType === 'book' ? (
+                        <>
+                          <td className="title-cell">{item.title}</td>
+                          <td>{item.authors?.map((author) => author.lastName).join(', ') || '—'}</td>
+                          <td>{item.genreName ? genreLabel(item.genreName) : '—'}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="title-cell">{item.title}</td>
+                          <td>{item.publisherName || '—'}</td>
+                          <td>{item.genreName ? genreLabel(item.genreName) : '—'}</td>
+                        </>
+                      )}
+                      <td className="nowrap">
+                        <button type="button" className="retro-btn retro-btn--small" onClick={() => openResult(item)}>
+                          Открыть
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="quick-search__footer">
+              <button type="button" className="retro-btn retro-btn--small" onClick={showAll}>
+                Показать все результаты <Icon name="arrowRight" size={12} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="retro-panel panel">
+        <div className="section-title">
+          <span><Icon name="warning" size={14} /> Просроченные выдачи</span>
+          <span className="section-title__meta">
+            <button type="button" className="retro-btn retro-btn--small" onClick={() => navigate('/loans')}>
+              Все выдачи
+            </button>
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="loading-state">Загрузка…</div>
+        ) : overdue.length === 0 ? (
+          <div className="empty-state">
+            <strong>Просроченных выдач нет</strong>
+            Все читатели возвращают книги вовремя.
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="retro-table">
+              <thead>
+                <tr>
+                  <th>Издание</th>
+                  <th>Читатель</th>
+                  <th>Инв. номер</th>
+                  <th>Срок до</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overdue.slice(0, 5).map((loan) => (
+                  <tr key={loan.id}>
+                    <td className="title-cell">{loan.bookTitle}</td>
+                    <td>{loan.userFullName}</td>
+                    <td>{loan.inventoryNumber}</td>
+                    <td className="nowrap">{formatDate(loan.dueDate)}</td>
+                    <td>
+                      <span className={`badge ${statusTone(loan.statusName)}`}>
+                        {loanStatusLabel(loan.statusName)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
-
-      <div className="card">
-        <h3>⚠️ Просроченные выдачи (последние 5)</h3>
-        {overdue.length === 0 ? (
-          <p style={{ color: 'var(--success)' }}>✅ Нет просроченных выдач</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Книга</th>
-                <th>Читатель</th>
-                <th>Срок до</th>
-              </tr>
-            </thead>
-            <tbody>
-              {overdue.map(l => (
-                <tr key={l.id}>
-                  <td>📖 {l.bookTitle}</td>
-                  <td>👤 {l.userFullName}</td>
-                  <td><span className="badge badge-danger">{l.dueDate}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      </section>
     </div>
   );
 };
