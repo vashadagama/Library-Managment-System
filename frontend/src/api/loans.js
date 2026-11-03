@@ -14,6 +14,8 @@ export const renewLoan = (loanId, extraDays = 14) =>
 
 export const getOverdueLoans = () => api.get('/loans/overdue');
 
+export const getAllActiveLoans = () => api.get('/loans/active');
+
 export const getLoanHistoryByUser = (userId) =>
   api.get(`/loans/history/user/${userId}`);
 

@@ -1,82 +1,210 @@
-import { useState, useEffect } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { getBook } from '../api/books';
-import { getMagazine } from '../api/magazines';
-import { issueByLibraryItem } from '../api/loans';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { getBook } from '../api/books';
+import { getCopies } from '../api/copies';
+import { issueByLibraryItem } from '../api/loans';
+import { getMagazine } from '../api/magazines';
+import { getErrorMessage } from '../utils/errors';
+import { formatDate } from '../utils/format';
+import { genreLabel } from '../utils/labels';
+import Icon from '../components/Icon';
+import PageHeader from '../components/PageHeader';
+import ReaderPicker from '../components/ReaderPicker';
 
 const IssuePage = () => {
   const { itemId } = useParams();
   const [searchParams] = useSearchParams();
-  const type = searchParams.get('type') || 'books';
+  const type = searchParams.get('type') === 'magazines' ? 'magazines' : 'books';
   const navigate = useNavigate();
 
   const [item, setItem] = useState(null);
-  const [userId, setUserId] = useState('');
+  const [copies, setCopies] = useState([]);
+  const [reader, setReader] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [issuing, setIssuing] = useState(false);
 
   useEffect(() => {
-    const fetchItem = async () => {
+    let ignore = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+
       try {
-        if (type === 'books') {
-          const res = await getBook(itemId);
-          setItem(res.data);
-        } else {
-          const res = await getMagazine(itemId);
-          setItem(res.data);
+        const itemRequest = type === 'books' ? getBook(itemId) : getMagazine(itemId);
+        const [itemResponse, copiesResponse] = await Promise.all([itemRequest, getCopies(itemId)]);
+
+        if (ignore) return;
+        setItem(itemResponse.data);
+        setCopies(Array.isArray(copiesResponse.data) ? copiesResponse.data : []);
+      } catch (loadError) {
+        if (!ignore) {
+          setError(getErrorMessage(loadError, 'Не удалось загрузить издание'));
         }
-      } catch (err) {
-        toast.error('Ошибка загрузки издания');
+      } finally {
+        if (!ignore) setLoading(false);
       }
     };
-    fetchItem();
+
+    load();
+
+    return () => {
+      ignore = true;
+    };
   }, [itemId, type]);
 
+  const availableCopies = useMemo(
+    () => copies.filter((copy) => copy.statusName === 'AVAILABLE'),
+    [copies]
+  );
+
   const handleIssue = async () => {
-    if (!userId.trim()) {
-      toast.warning('Введите ID читателя');
+    if (!reader) {
+      toast.warning('Выберите читателя');
       return;
     }
+
+    setIssuing(true);
     try {
-      await issueByLibraryItem(userId.trim(), itemId);
-      toast.success('Издание успешно выдано!');
-      setUserId('');
-      setTimeout(() => navigate(-1), 2000);
-    } catch (err) {
-      toast.error('Ошибка: ' + (err.response?.data?.message || err.message));
+      const response = await issueByLibraryItem(reader.id, itemId);
+      toast.success(`Издание выдано: ${response.data?.userFullName || reader.fullName}`);
+      navigate('/loans');
+    } catch (issueError) {
+      toast.error(getErrorMessage(issueError, 'Не удалось выдать издание'));
+    } finally {
+      setIssuing(false);
     }
   };
 
-  if (!item) return <div>Загрузка...</div>;
+  if (loading) {
+    return <div className="loading-state">Загрузка издания…</div>;
+  }
+
+  if (error || !item) {
+    return (
+      <div className="screen">
+        <PageHeader
+          title="Выдача издания"
+          icon="loans"
+          breadcrumbs={<Link to="/catalog">Каталог</Link>}
+        />
+        <div className="error-state">
+          <strong>Издание не загружено</strong>
+          {error || 'Издание не найдено'}
+          <div className="form-actions">
+            <button type="button" className="retro-btn retro-btn--small" onClick={() => navigate('/catalog')}>
+              <Icon name="arrowLeft" size={13} /> В каталог
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const detailPath = type === 'books' ? `/books/${item.id}` : `/magazines/${item.id}`;
+  const catalogPath = type === 'books' ? '/catalog?type=books' : '/catalog?type=magazines';
+  const authors = item.authors?.map((author) => author.fullName).join(', ');
+  const description = type === 'books'
+    ? authors || 'Авторы не указаны'
+    : item.publisherName || 'Издательство не указано';
 
   return (
-    <div>
-      <h2>Выдача издания</h2>
-      <div className="card">
-        <h3>{item.title}</h3>
-        <p>
-          {type === 'books'
-            ? (item.authors?.map(a => `${a.lastName} ${a.firstName}`).join(', ') || 'Авторы не указаны')
-            : `Издатель: ${item.publisher || 'не указан'}`
-          }
-        </p>
-        <p><strong>Тип:</strong> {type === 'books' ? 'Книга' : 'Журнал'}</p>
-        <p><strong>Жанр:</strong> {item.genre}</p>
-      </div>
+    <div className="screen">
+      <PageHeader
+        title="Выдача издания"
+        subtitle={item.title}
+        icon="loans"
+        breadcrumbs={
+          <>
+            <Link to={catalogPath}>Каталог</Link>
+            <span>/</span>
+            <Link to={detailPath}>{item.title}</Link>
+            <span>/</span>
+            <span>Выдача</span>
+          </>
+        }
+        actions={
+          <button type="button" className="retro-btn" onClick={() => navigate(detailPath)}>
+            <Icon name="arrowLeft" size={13} /> К изданию
+          </button>
+        }
+      />
 
-      <div className="card" style={{ marginTop: '20px' }}>
-        <div className="form-group">
-          <label>ID читателя</label>
-          <input
-            type="text"
-            placeholder="Введите ID читателя"
-            value={userId}
-            onChange={e => setUserId(e.target.value)}
-          />
-        </div>
-        <button onClick={handleIssue} style={{ marginTop: '10px' }}>Выдать</button>
-        <p style={{ marginTop: '10px', fontSize: '12px', color: 'gray' }}>
-          ID читателя можно найти на странице «Читатели».
-        </p>
+      <div className="issue-layout">
+        <section className="retro-panel panel">
+          <div className="section-title">
+            <span><Icon name={type === 'books' ? 'book' : 'magazine'} size={14} /> Издание</span>
+          </div>
+          <div className="issue-title">{item.title}</div>
+          <div className="issue-subtitle">{description}</div>
+          <div className="meta-grid meta-grid--single">
+            <div className="meta-row">
+              <span className="meta-row__label">Тип</span>
+              <span className="meta-row__value">{type === 'books' ? 'Книга' : 'Журнал'}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-row__label">Жанр</span>
+              <span className="meta-row__value">{genreLabel(item.genreName)}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-row__label">Дата публикации</span>
+              <span className="meta-row__value">{formatDate(item.publicationDate)}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-row__label">Доступно экземпляров</span>
+              <span className="meta-row__value">
+                <span className={`badge ${availableCopies.length > 0 ? 'success' : 'danger'}`}>
+                  {availableCopies.length} из {copies.length}
+                </span>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section className="retro-panel panel">
+          <div className="section-title">
+            <span><Icon name="readers" size={14} /> Читатель</span>
+          </div>
+          <div className="form-group">
+            <label>Кому выдать издание</label>
+            <ReaderPicker value={reader} onChange={setReader} />
+          </div>
+
+          {reader ? (
+            <div className="issue-reader-info">
+              <div><strong>{reader.fullName}</strong></div>
+              <div className="hint">
+                {reader.libraryCardNumber || 'без номера билета'} · на руках: {reader.activeLoansCount ?? 0}
+                {reader.maxActiveLoans != null ? ` из ${reader.maxActiveLoans}` : ''}
+              </div>
+            </div>
+          ) : (
+            <p className="hint">Начните вводить фамилию, email или номер билета читателя.</p>
+          )}
+
+          {availableCopies.length === 0 ? (
+            <div className="form-error">
+              Нет доступных экземпляров. Добавьте экземпляр или измените его статус на странице издания.
+            </div>
+          ) : null}
+
+          <div className="form-actions">
+            <button
+              type="button"
+              className="retro-btn primary"
+              onClick={handleIssue}
+              disabled={issuing || !reader || availableCopies.length === 0}
+            >
+              <Icon name="check" size={13} />
+              {issuing ? 'Выдача…' : 'Выдать издание'}
+            </button>
+            <button type="button" className="retro-btn" onClick={() => navigate(detailPath)}>
+              Отмена
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );
