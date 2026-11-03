@@ -1,116 +1,171 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { userRoleLabel } from '../utils/labels';
+import Icon from './Icon';
+
+const navItems = [
+  { to: '/', label: 'Главная', icon: 'home', end: true },
+  { to: '/catalog', label: 'Каталог', icon: 'book' },
+  { to: '/authors', label: 'Авторы', icon: 'authors' },
+  { to: '/readers', label: 'Читатели', icon: 'readers' },
+  { to: '/loans', label: 'Выдачи', icon: 'loans' },
+  { to: '/statistics', label: 'Статистика', icon: 'statistics' },
+];
 
 const Layout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const [maximized, setMaximized] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const handleLogout = () => {
-    if (window.confirm('Вы уверены, что хотите выйти?')) {
-      logout();
-      navigate('/login');
-    }
+    if (!window.confirm('Выйти из системы?')) return;
+    logout();
+    navigate('/login', { replace: true });
   };
 
   if (!user) return <Outlet />;
 
+  const role = userRoleLabel(user.role?.replace('ROLE_', ''));
+  const isHome = location.pathname === '/';
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar */}
-      <nav style={{
-        width: '240px',
-        background: 'var(--bg-sidebar)',
-        color: 'var(--text-white)',
-        padding: '20px 0',
-        boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        overflowY: 'auto',
-        zIndex: 100
-      }}>
-        <div style={{ padding: '0 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '20px' }}>
-          <h2 style={{ color: 'white', margin: '0 0 10px 0', border: 'none', fontSize: '22px' }}>📚 LIMS</h2>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0 }}>
-            {user.email}
-          </p>
-          <span className="badge" style={{
-            background: user.role === 'ROLE_ADMIN' ? '#e74c3c' : '#3498db',
-            color: 'white',
-            marginTop: '8px',
-            display: 'inline-block'
-          }}>
-            {user.role === 'ROLE_ADMIN' ? 'Админ' : 'Библиотекарь'}
+    <div className={`app-shell${maximized ? ' app-shell--max' : ''}`}>
+      <div
+        className={`app-window retro-panel${maximized ? ' app-window--max' : ''}${
+          collapsed ? ' app-window--collapsed' : ''
+        }`}
+      >
+        <div className="retro-titlebar">
+          <span className="titlebar-icon">
+            <Icon name="book" size={14} />
+          </span>
+          <span className="titlebar-title">
+            LIMS — Библиотечная информационная система
+          </span>
+          <div className="window-controls">
+            <button
+              type="button"
+              className="window-control"
+              onClick={() => setCollapsed((value) => !value)}
+              title={collapsed ? 'Восстановить окно' : 'Свернуть окно'}
+              aria-label={collapsed ? 'Восстановить окно' : 'Свернуть окно'}
+            >
+              {collapsed ? '▣' : '_'}
+            </button>
+            <button
+              type="button"
+              className="window-control"
+              onClick={() => setMaximized((value) => !value)}
+              title={maximized ? 'Восстановить размер' : 'Развернуть окно'}
+              aria-label={maximized ? 'Восстановить размер' : 'Развернуть окно'}
+            >
+              {maximized ? '❐' : '▢'}
+            </button>
+            <button
+              type="button"
+              className="window-control window-control--close"
+              onClick={handleLogout}
+              title="Выйти из системы"
+              aria-label="Выйти из системы"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <nav className="app-menubar" aria-label="Основная навигация">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => `menu-link${isActive ? ' active' : ''}`}
+            >
+              <Icon name={item.icon} size={14} />
+              {item.label}
+            </NavLink>
+          ))}
+          <span className="menu-spacer" />
+          <span className="menu-user" title={user.email}>
+            <Icon name="user" size={13} />
+            <strong>{user.email}</strong>
+            <span className={`badge ${user.role === 'ROLE_ADMIN' ? 'info' : 'warning'}`}>
+              {role}
+            </span>
+          </span>
+          <button type="button" className="menu-link" onClick={handleLogout}>
+            <Icon name="logout" size={14} />
+            Выход
+          </button>
+        </nav>
+
+        <div className="app-toolbar">
+          <button
+            type="button"
+            className="retro-btn retro-btn--small"
+            onClick={() => navigate('/books/new')}
+          >
+            <Icon name="plus" size={13} />
+            Новая книга
+          </button>
+          <button
+            type="button"
+            className="retro-btn retro-btn--small"
+            onClick={() => navigate('/magazines/new')}
+          >
+            <Icon name="plus" size={13} />
+            Новый журнал
+          </button>
+          <span className="toolbar-separator" />
+          <button
+            type="button"
+            className="retro-btn retro-btn--small"
+            onClick={() => navigate('/catalog')}
+          >
+            <Icon name="loans" size={13} />
+            Оформить выдачу
+          </button>
+          <button
+            type="button"
+            className="retro-btn retro-btn--small"
+            onClick={() => navigate('/loans')}
+          >
+            <Icon name="clock" size={13} />
+            Просрочки
+          </button>
+          <span className="toolbar-spacer" />
+          <span className="toolbar-label">
+            {isHome ? 'Рабочий стол' : 'Система работает в штатном режиме'}
           </span>
         </div>
 
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    <MenuItem to="/" icon="🏠">Главная</MenuItem>
-                    <MenuItem to="/catalog" icon="📚">Каталог</MenuItem>
-                    <MenuItem to="/readers" icon="👥">Читатели</MenuItem>
-                    <MenuItem to="/loans" icon="🔄">Выдачи</MenuItem>
-                    {user.role === 'ROLE_ADMIN' && (
-                      <MenuItem to="/statistics" icon="📊">Статистика</MenuItem>
-                    )}
-                  </ul>
-
-        <div style={{ padding: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 'auto' }}>
-          <button
-            onClick={handleLogout}
-            style={{
-              width: '100%',
-              background: 'rgba(255,255,255,0.1)',
-              color: 'white',
-              border: 'none',
-              padding: '10px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            🚪 Выйти
-          </button>
+        <div className="app-body">
+          <main className="app-content">
+            <Outlet />
+          </main>
         </div>
-      </nav>
 
-      {/* Main content */}
-      <main style={{ flex: 1, marginLeft: '240px', padding: '30px', background: 'var(--bg)', minHeight: '100vh' }}>
-        <Outlet />
-      </main>
+        <div className="statusbar">
+          <span className="status-cell status-cell--grow">Готово</span>
+          <span className="status-cell">{role}</span>
+          <span className="status-cell">{user.email}</span>
+          <span className="status-cell">
+            {now.toLocaleDateString('ru-RU')} {now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <span className="status-cell">LIMS 1.0</span>
+        </div>
+      </div>
     </div>
   );
 };
-
-const MenuItem = ({ to, icon, children }) => (
-  <li>
-    <Link
-      to={to}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 20px',
-        color: 'rgba(255,255,255,0.8)',
-        textDecoration: 'none',
-        transition: 'all 0.2s',
-        borderLeft: '3px solid transparent',
-        fontSize: '15px'
-      }}
-      onMouseEnter={(e) => {
-        e.target.style.background = 'rgba(255,255,255,0.1)';
-        e.target.style.color = 'white';
-        e.target.style.borderLeftColor = '#3498db';
-      }}
-      onMouseLeave={(e) => {
-        e.target.style.background = 'transparent';
-        e.target.style.color = 'rgba(255,255,255,0.8)';
-        e.target.style.borderLeftColor = 'transparent';
-      }}
-    >
-      <span style={{ marginRight: '10px' }}>{icon}</span>
-      {children}
-    </Link>
-  </li>
-);
 
 export default Layout;

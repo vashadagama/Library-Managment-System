@@ -1,20 +1,35 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import Icon from './Icon';
 
 const NotFound = () => {
+  const navigate = useNavigate();
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      textAlign: 'center',
-      padding: '20px'
-    }}>
-      <h1 style={{ fontSize: '72px', margin: 0 }}>404</h1>
-      <h2>Страница не найдена</h2>
-      <p>Извините, запрошенная страница не существует.</p>
-      <Link to="/" style={{ marginTop: '20px' }}>Вернуться на главную</Link>
+    <div className="login-shell">
+      <div className="login-window">
+        <div className="retro-titlebar">
+          <span className="titlebar-icon"><Icon name="warning" size={14} /></span>
+          <span className="titlebar-title">Ошибка 404</span>
+          <div className="window-controls">
+            <span className="window-control" aria-hidden="true">✕</span>
+          </div>
+        </div>
+        <div className="notfound-body">
+          <div className="notfound-code">404</div>
+          <h1 className="notfound-title">Страница не найдена</h1>
+          <p className="notfound-text">
+            Запрошенный раздел не существует или был перемещён.
+          </p>
+          <div className="notfound-actions">
+            <button type="button" className="retro-btn primary" onClick={() => navigate('/')}>
+              <Icon name="home" size={13} /> На главную
+            </button>
+            <Link className="retro-btn" to="/catalog">
+              <Icon name="book" size={13} /> В каталог
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

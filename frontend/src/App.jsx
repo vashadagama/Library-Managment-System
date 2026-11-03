@@ -7,6 +7,7 @@ import Dashboard from './screens/Dashboard';
 import CatalogScreen from './screens/CatalogScreen';
 import BookDetailScreen from './screens/BookDetailScreen';
 import MagazineDetailScreen from './screens/MagazineDetailScreen';
+import AuthorsScreen from './screens/AuthorsScreen';
 import ReadersScreen from './screens/ReadersScreen';
 import LoansScreen from './screens/LoansScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
@@ -17,6 +18,8 @@ import NotFound from './components/NotFound';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+const STAFF_ROLES = ['ROLE_LIBRARIAN', 'ROLE_ADMIN'];
+
 const App = () => {
   return (
     <BrowserRouter>
@@ -24,25 +27,69 @@ const App = () => {
         <Routes>
           <Route path="/login" element={<LoginScreen />} />
 
-          <Route path="/issue/:itemId" element={<PrivateRoute><IssuePage /></PrivateRoute>} />
-
-          <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+          <Route
+            element={
+              <PrivateRoute>
+                <Layout />
+              </PrivateRoute>
+            }
+          >
             <Route path="/" element={<Dashboard />} />
             <Route path="/catalog" element={<CatalogScreen />} />
             <Route path="/books/:id" element={<BookDetailScreen />} />
             <Route path="/magazines/:id" element={<MagazineDetailScreen />} />
-            <Route path="/readers" element={<ReadersScreen />} />
-            <Route path="/loans" element={<LoansScreen />} />
-            <Route path="/statistics" element={<PrivateRoute roles={['ROLE_ADMIN']}><StatisticsScreen /></PrivateRoute>} />
-            <Route path="/books/new" element={<BookForm />} />
-            <Route path="/books/edit/:id" element={<BookForm />} />
-            <Route path="/magazines/new" element={<MagazineForm />} />
-            <Route path="/magazines/edit/:id" element={<MagazineForm />} />
+            <Route
+              path="/authors"
+              element={<PrivateRoute roles={STAFF_ROLES}><AuthorsScreen /></PrivateRoute>}
+            />
+            <Route
+              path="/readers"
+              element={<PrivateRoute roles={STAFF_ROLES}><ReadersScreen /></PrivateRoute>}
+            />
+            <Route
+              path="/loans"
+              element={<PrivateRoute roles={STAFF_ROLES}><LoansScreen /></PrivateRoute>}
+            />
+            <Route
+              path="/statistics"
+              element={<PrivateRoute roles={STAFF_ROLES}><StatisticsScreen /></PrivateRoute>}
+            />
+            <Route
+              path="/issue/:itemId"
+              element={<PrivateRoute roles={STAFF_ROLES}><IssuePage /></PrivateRoute>}
+            />
+            <Route
+              path="/books/new"
+              element={<PrivateRoute roles={STAFF_ROLES}><BookForm /></PrivateRoute>}
+            />
+            <Route
+              path="/books/edit/:id"
+              element={<PrivateRoute roles={STAFF_ROLES}><BookForm /></PrivateRoute>}
+            />
+            <Route
+              path="/magazines/new"
+              element={<PrivateRoute roles={STAFF_ROLES}><MagazineForm /></PrivateRoute>}
+            />
+            <Route
+              path="/magazines/edit/:id"
+              element={<PrivateRoute roles={STAFF_ROLES}><MagazineForm /></PrivateRoute>}
+            />
           </Route>
 
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
+        <ToastContainer
+          position="top-right"
+          autoClose={3500}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnFocusLoss={false}
+          draggable
+          pauseOnHover
+          theme="light"
+          limit={4}
+        />
       </AuthProvider>
     </BrowserRouter>
   );
