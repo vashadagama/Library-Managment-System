@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
+  changeUserPassword,
+  changeUserRole,
   changeUserStatus,
   createReader,
   getReaders,
@@ -22,7 +24,15 @@ const emptyReader = {
   lastName: '',
   middleName: '',
   email: '',
+  role: 'READER',
+  password: '',
 };
+
+const ROLE_OPTIONS = [
+  { value: 'READER', label: 'Читатель' },
+  { value: 'LIBRARIAN', label: 'Библиотекарь' },
+  { value: 'ADMIN', label: 'Администратор' },
+];
 
 const ReadersScreen = () => {
   const [searchParams] = useSearchParams();
@@ -46,6 +56,10 @@ const ReadersScreen = () => {
   const [limitValue, setLimitValue] = useState('');
   const [limitError, setLimitError] = useState('');
   const [savingLimit, setSavingLimit] = useState(false);
+  const [roleTarget, setRoleTarget] = useState(null);
+  const [roleForm, setRoleForm] = useState({ role: 'LIBRARIAN', password: '' });
+  const [roleError, setRoleError] = useState('');
+  const [savingRole, setSavingRole] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 350);
 
   const loadReaders = useCallback(async () => {
@@ -114,6 +128,12 @@ const ReadersScreen = () => {
       return;
     }
 
+    const role = isAdmin ? createForm.role : 'READER';
+    if (isAdmin && role !== 'READER' && !createForm.password.trim()) {
+      setCreateError('Укажите пароль сотрудника — он нужен для входа в систему');
+      return;
+    }
+
     setCreating(true);
     setCreateError('');
 
@@ -123,15 +143,16 @@ const ReadersScreen = () => {
         lastName: createForm.lastName.trim(),
         middleName: createForm.middleName.trim() || null,
         email: createForm.email.trim(),
-        role: 'READER',
+        role,
+        password: role !== 'READER' ? createForm.password.trim() : undefined,
       });
-      toast.success('Читатель зарегистрирован');
+      toast.success(role === 'READER' ? 'Читатель зарегистрирован' : 'Сотрудник создан');
       setCreateOpen(false);
       setCreateForm(emptyReader);
       setPage(0);
       reload();
     } catch (createReaderError) {
-      setCreateError(getErrorMessage(createReaderError, 'Не удалось создать читателя'));
+      setCreateError(getErrorMessage(createReaderError, 'Не удалось создать пользователя'));
     } finally {
       setCreating(false);
     }
@@ -141,6 +162,43 @@ const ReadersScreen = () => {
     setLimitTarget(reader);
     setLimitValue(String(reader.maxActiveLoans ?? 5));
     setLimitError('');
+  };
+
+  const openRole = (reader) => {
+    setRoleTarget(reader);
+    setRoleForm({ role: reader.roleName || 'READER', password: '' });
+    setRoleError('');
+  };
+
+  const saveRole = async () => {
+    if (!roleTarget) return;
+
+    const willBeStaff = roleForm.role !== 'READER';
+    if (roleTarget.id === user?.id || roleTarget.email === user?.email) {
+      setRoleError('Нельзя изменить собственную роль');
+      return;
+    }
+    if (willBeStaff && !roleTarget.hasPassword && !roleForm.password.trim()) {
+      setRoleError('Укажите пароль: сотрудник должен уметь входить в систему');
+      return;
+    }
+
+    setSavingRole(true);
+    setRoleError('');
+
+    try {
+      if (roleForm.password.trim()) {
+        await changeUserPassword(roleTarget.id, roleForm.password.trim());
+      }
+      await changeUserRole(roleTarget.id, roleForm.role);
+      toast.success('Роль обновлена');
+      setRoleTarget(null);
+      reload();
+    } catch (roleSaveError) {
+      setRoleError(getErrorMessage(roleSaveError, 'Не удалось изменить роль'));
+    } finally {
+      setSavingRole(false);
+    }
   };
 
   const saveLimit = async () => {
@@ -172,8 +230,8 @@ const ReadersScreen = () => {
   return (
     <div className="screen">
       <PageHeader
-        title="Читатели"
-        subtitle="Регистрация, блокировка и лимиты выдач"
+        title="Читатели и сотрудники"
+        subtitle={isAdmin ? 'Регистрация, блокировка, лимиты и роли' : 'Регистрация, блокировка и лимиты выдач'}
         icon="readers"
         actions={
           <>
@@ -287,6 +345,14 @@ const ReadersScreen = () => {
                               >
                                 Лимит
                               </button>
+                              <button
+                                type="button"
+                                className="retro-btn retro-btn--small"
+                                onClick={() => openRole(reader)}
+                                disabled={busy || reader.email === user?.email}
+                              >
+                                Роль
+                              </button>
                             </>
                           ) : (
                             <span className="hint">Только просмотр</span>
@@ -317,7 +383,7 @@ const ReadersScreen = () => {
 
       {createOpen ? (
         <Dialog
-          title="Регистрация читателя"
+          title={isAdmin && createForm.role !== 'READER' ? 'Создание сотрудника' : 'Регистрация читателя'}
           icon="readers"
           onClose={closeCreate}
           footer={
@@ -370,9 +436,39 @@ const ReadersScreen = () => {
                 required
               />
             </div>
+            {isAdmin ? (
+              <>
+                <div className="form-group">
+                  <label htmlFor="reader-role">Роль</label>
+                  <select
+                    id="reader-role"
+                    value={createForm.role}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, role: event.target.value }))}
+                  >
+                    {ROLE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="reader-password">
+                    Пароль {createForm.role !== 'READER' ? <span className="required">*</span> : null}
+                  </label>
+                  <input
+                    id="reader-password"
+                    type="password"
+                    value={createForm.password}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))}
+                    disabled={createForm.role === 'READER'}
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
           <p className="hint">
-            Номер читательского билета и лимит выдач будут назначены автоматически.
+            {isAdmin && createForm.role !== 'READER'
+              ? 'Сотрудник войдёт в систему по email и паролю.'
+              : 'Номер читательского билета и лимит выдач будут назначены автоматически.'}
           </p>
         </Dialog>
       ) : null}
@@ -407,6 +503,58 @@ const ReadersScreen = () => {
               autoFocus
             />
           </div>
+        </Dialog>
+      ) : null}
+
+      {roleTarget ? (
+        <Dialog
+          title="Роль пользователя"
+          icon="user"
+          onClose={() => setRoleTarget(null)}
+          footer={
+            <>
+              <button type="button" className="retro-btn" onClick={() => setRoleTarget(null)} disabled={savingRole}>
+                Отмена
+              </button>
+              <button type="button" className="retro-btn primary" onClick={saveRole} disabled={savingRole}>
+                {savingRole ? 'Сохранение…' : 'Сохранить'}
+              </button>
+            </>
+          }
+        >
+          <p className="hint">
+            Пользователь: <strong>{roleTarget.fullName}</strong>
+            {roleTarget.hasPassword ? ' (пароль установлен)' : ' (без пароля)'}
+          </p>
+          {roleError ? <div className="form-error">{roleError}</div> : null}
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="role-select">Роль</label>
+              <select
+                id="role-select"
+                value={roleForm.role}
+                onChange={(event) => setRoleForm((current) => ({ ...current, role: event.target.value }))}
+                autoFocus
+              >
+                {ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="role-password">Новый пароль (необязательно)</label>
+              <input
+                id="role-password"
+                type="password"
+                value={roleForm.password}
+                onChange={(event) => setRoleForm((current) => ({ ...current, password: event.target.value }))}
+              />
+            </div>
+          </div>
+          <p className="hint">
+            Смена роли на библиотекаря или администратора требует, чтобы у пользователя был пароль
+            для входа в систему. Свою роль изменить нельзя.
+          </p>
         </Dialog>
       ) : null}
     </div>

@@ -37,6 +37,7 @@ class UserServiceTest {
     @Mock private LoanRepository loanRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private SystemParameterService systemParameterService;
+    @Mock private AuditService auditService;
 
     @InjectMocks private UserService userService;
 

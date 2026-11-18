@@ -80,4 +80,31 @@ public interface LoanRepository extends JpaRepository<Loan, UUID> {
             GROUP BY l.user.id
             """)
     List<Object[]> countActiveLoansByUser(@Param("statuses") List<String> statuses);
+
+    @Query("""
+            select l from Loan l
+            where l.status.name in :statuses and l.dueDate between :from and :to
+            order by l.dueDate asc
+            """)
+    List<Loan> findDueBetween(@Param("statuses") List<String> statuses,
+                              @Param("from") java.time.LocalDate from,
+                              @Param("to") java.time.LocalDate to);
+
+    @Query(value = """
+            SELECT u.id,
+                   CONCAT(u.last_name, ' ', u.first_name, ' ',
+                          COALESCE(u.middle_name, '')) AS reader,
+                   u.email,
+                   u.library_card_number,
+                   COUNT(l.id) AS cnt
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+            JOIN loans l ON l.user_id = u.id
+            JOIN loan_statuses ls ON l.status_id = ls.id
+            WHERE r.name = 'READER' AND ls.name NOT IN ('RETURNED', 'LOST')
+            GROUP BY u.id, reader, u.email, u.library_card_number
+            ORDER BY cnt DESC
+            """,
+            nativeQuery = true)
+    List<Object[]> findActiveReadersRaw();
 }

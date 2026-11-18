@@ -47,6 +47,7 @@ class LoanServiceTest {
     @Mock private LoanStatusRepository loanStatusRepository;
     @Mock private FineRepository fineRepository;
     @Mock private SystemParameterService systemParameterService;
+    @Mock private AuditService auditService;
 
     @InjectMocks private LoanService loanService;
 

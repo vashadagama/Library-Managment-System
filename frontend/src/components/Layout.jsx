@@ -10,6 +10,7 @@ const navItems = [
   { to: '/authors', label: 'Авторы', icon: 'authors' },
   { to: '/readers', label: 'Читатели', icon: 'readers' },
   { to: '/loans', label: 'Выдачи', icon: 'loans' },
+  { to: '/fines', label: 'Штрафы', icon: 'warning' },
   { to: '/statistics', label: 'Статистика', icon: 'statistics' },
 ];
 

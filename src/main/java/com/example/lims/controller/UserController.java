@@ -50,6 +50,19 @@ public class UserController {
         return userService.updateMaxLoansLimit(id, newLimit);
     }
 
+    @PatchMapping("/{id}/role")
+    public UserDto changeRole(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+        String role = body.get("role");
+        return userService.changeUserRole(id, role);
+    }
+
+    @PatchMapping("/{id}/password")
+    public ResponseEntity<Void> changePassword(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+        String password = body.get("password");
+        userService.changePassword(id, password);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/search")
     public List<UserDto> searchUsers(@RequestParam String q) {
         return userService.searchUsers(q);

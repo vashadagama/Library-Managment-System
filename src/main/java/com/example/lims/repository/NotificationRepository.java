@@ -10,4 +10,8 @@ import java.util.UUID;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
     List<Notification> findByUserIdOrderBySentAtDesc(UUID userId);
+
+    List<Notification> findTop50ByOrderBySentAtDesc();
+
+    boolean existsByUserIdAndTypeIdAndMessage(UUID userId, UUID typeId, String message);
 }

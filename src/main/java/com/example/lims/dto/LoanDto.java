@@ -16,6 +16,7 @@ public class LoanDto {
     private LocalDate returnDate;
     private UUID statusId;
     private String statusName;
+    private java.math.BigDecimal fineAmount;
 
     public LoanDto() {
     }
@@ -58,4 +59,6 @@ public class LoanDto {
     public void setStatusId(UUID statusId) { this.statusId = statusId; }
     public String getStatusName() { return statusName; }
     public void setStatusName(String statusName) { this.statusName = statusName; }
+    public java.math.BigDecimal getFineAmount() { return fineAmount; }
+    public void setFineAmount(java.math.BigDecimal fineAmount) { this.fineAmount = fineAmount; }
 }

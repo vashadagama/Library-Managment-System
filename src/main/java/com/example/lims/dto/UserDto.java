@@ -12,6 +12,7 @@ public class UserDto {
     private String libraryCardNumber;
     private Integer maxActiveLoans;
     private int activeLoansCount;
+    private boolean hasPassword;
 
     public UserDto() {
     }
@@ -45,4 +46,6 @@ public class UserDto {
     public void setMaxActiveLoans(Integer maxActiveLoans) { this.maxActiveLoans = maxActiveLoans; }
     public int getActiveLoansCount() { return activeLoansCount; }
     public void setActiveLoansCount(int activeLoansCount) { this.activeLoansCount = activeLoansCount; }
+    public boolean isHasPassword() { return hasPassword; }
+    public void setHasPassword(boolean hasPassword) { this.hasPassword = hasPassword; }
 }

@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { getOverdueLoans, getPopularBooks, getSummaryStatistics } from '../api/statistics';
+import {
+  downloadActiveReadersReport,
+  downloadFineDebtsReport,
+  downloadOverdueLoansReport,
+  downloadPopularBooksReport,
+} from '../api/reports';
 import { getErrorMessage } from '../utils/errors';
 import { formatCount } from '../utils/format';
 import Icon from '../components/Icon';
@@ -17,6 +24,20 @@ const StatisticsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [reportBusy, setReportBusy] = useState('');
+
+  const runReport = async (key, downloader) => {
+    setReportBusy(key);
+
+    try {
+      await downloader();
+      toast.success('Отчёт сформирован и скачан');
+    } catch (reportError) {
+      toast.error(getErrorMessage(reportError, 'Не удалось сформировать отчёт'));
+    } finally {
+      setReportBusy('');
+    }
+  };
 
   const loadStatistics = useCallback(async () => {
     setLoading(true);
@@ -167,6 +188,54 @@ const StatisticsScreen = () => {
             </table>
           </div>
         )}
+      </section>
+
+      <section className="retro-panel panel">
+        <div className="section-title section-title--row">
+          <span><Icon name="box" size={14} /> Отчёты (выгрузка PDF)</span>
+        </div>
+        <p className="hint">
+          Отчёты по ТЗ: популярные издания за период, активные читатели, задолженности по штрафам
+          и просроченные выдачи. Файл скачивается автоматически.
+        </p>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="retro-btn"
+            disabled={reportBusy !== ''}
+            onClick={() => runReport('popular', () => downloadPopularBooksReport(year || null))}
+          >
+            <Icon name="statistics" size={13} />
+            {reportBusy === 'popular' ? 'Формирование…' : 'Популярные издания'}
+          </button>
+          <button
+            type="button"
+            className="retro-btn"
+            disabled={reportBusy !== ''}
+            onClick={() => runReport('readers', downloadActiveReadersReport)}
+          >
+            <Icon name="readers" size={13} />
+            {reportBusy === 'readers' ? 'Формирование…' : 'Активные читатели'}
+          </button>
+          <button
+            type="button"
+            className="retro-btn"
+            disabled={reportBusy !== ''}
+            onClick={() => runReport('fines', downloadFineDebtsReport)}
+          >
+            <Icon name="warning" size={13} />
+            {reportBusy === 'fines' ? 'Формирование…' : 'Задолженности по штрафам'}
+          </button>
+          <button
+            type="button"
+            className="retro-btn"
+            disabled={reportBusy !== ''}
+            onClick={() => runReport('overdue', downloadOverdueLoansReport)}
+          >
+            <Icon name="clock" size={13} />
+            {reportBusy === 'overdue' ? 'Формирование…' : 'Просроченные выдачи'}
+          </button>
+        </div>
       </section>
     </div>
   );

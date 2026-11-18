@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getAllActiveLoans, getOverdueLoans, renewLoan, returnBook } from '../api/loans';
 import { getErrorMessage } from '../utils/errors';
-import { formatDate, formatCount } from '../utils/format';
+import { formatDate, formatCount, formatMoney } from '../utils/format';
 import { loanStatusLabel, statusTone } from '../utils/labels';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Icon from '../components/Icon';
@@ -231,6 +231,7 @@ const LoansScreen = () => {
                   <th>Инв. №</th>
                   <th>Выдано</th>
                   <th>Срок</th>
+                  <th>Штраф</th>
                   <th>Статус</th>
                   <th>Действия</th>
                 </tr>
@@ -247,6 +248,9 @@ const LoansScreen = () => {
                       <td className="nowrap">{loan.inventoryNumber || '—'}</td>
                       <td className="nowrap">{formatDate(loan.loanDate)}</td>
                       <td className="nowrap">{formatDate(loan.dueDate)}</td>
+                      <td className="nowrap">
+                        {isOverdue && loan.fineAmount != null ? formatMoney(loan.fineAmount) : '—'}
+                      </td>
                       <td>
                         <span className={`badge ${statusTone(isOverdue ? 'OVERDUE' : loan.statusName)}`}>
                           {loanStatusLabel(isOverdue ? 'OVERDUE' : loan.statusName)}

@@ -46,6 +46,7 @@ public class LoanService {
     private final LoanStatusRepository loanStatusRepository;
     private final FineRepository fineRepository;
     private final SystemParameterService systemParameterService;
+    private final AuditService auditService;
 
     public LoanService(LoanRepository loanRepository,
                        UserRepository userRepository,
@@ -53,7 +54,8 @@ public class LoanService {
                        ItemStatusRepository itemStatusRepository,
                        LoanStatusRepository loanStatusRepository,
                        FineRepository fineRepository,
-                       SystemParameterService systemParameterService) {
+                       SystemParameterService systemParameterService,
+                       AuditService auditService) {
         this.loanRepository = loanRepository;
         this.userRepository = userRepository;
         this.itemCopyRepository = itemCopyRepository;
@@ -61,6 +63,7 @@ public class LoanService {
         this.loanStatusRepository = loanStatusRepository;
         this.fineRepository = fineRepository;
         this.systemParameterService = systemParameterService;
+        this.auditService = auditService;
     }
 
     public LoanDto issueBookByLibraryItem(UUID userId, UUID libraryItemId) {
@@ -72,7 +75,9 @@ public class LoanService {
                 .findFirst()
                 .orElseThrow(() -> new BusinessLogicException("Нет свободных экземпляров этого издания"));
 
-        return toDto(createLoan(user, availableCopy));
+        Loan loan = createLoan(user, availableCopy);
+        auditService.log("ISSUE", "LOAN", loan.getId());
+        return toDto(loan);
     }
 
     public LoanDto issueBookByCopy(UUID userId, UUID copyId) {
@@ -85,7 +90,9 @@ public class LoanService {
             throw new BusinessLogicException("Экземпляр недоступен для выдачи. Текущий статус: " + copy.getStatus().getName());
         }
 
-        return toDto(createLoan(user, copy));
+        Loan loan = createLoan(user, copy);
+        auditService.log("ISSUE", "LOAN", loan.getId());
+        return toDto(loan);
     }
 
     public LoanDto returnBook(UUID loanId) {
@@ -116,7 +123,9 @@ public class LoanService {
             }
         }
 
-        return toDto(loanRepository.save(loan));
+        Loan saved = loanRepository.save(loan);
+        auditService.log("RETURN", "LOAN", saved.getId());
+        return toDto(saved);
     }
 
     public LoanDto renewLoan(UUID loanId, int extraDays) {
@@ -135,7 +144,9 @@ public class LoanService {
         loan.setRenewalCount(loan.getRenewalCount() + 1);
         loan.setStatus(loanStatus(RENEWED));
 
-        return toDto(loanRepository.save(loan));
+        Loan saved = loanRepository.save(loan);
+        auditService.log("RENEW", "LOAN", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -145,7 +156,17 @@ public class LoanService {
 
     @Transactional(readOnly = true)
     public List<LoanDto> getOverdueLoans() {
-        return loanRepository.findExpiredLoans(ACTIVE_STATUSES).stream().map(this::toDto).toList();
+        LocalDate today = LocalDate.now();
+        BigDecimal rate = systemParameterService.getDecimal("fine_per_day", BigDecimal.TEN);
+
+        return loanRepository.findExpiredLoans(ACTIVE_STATUSES).stream()
+                .map(loan -> {
+                    LoanDto dto = toDto(loan);
+                    long daysOverdue = Math.max(DAYS.between(loan.getDueDate(), today), 1);
+                    dto.setFineAmount(rate.multiply(BigDecimal.valueOf(daysOverdue)));
+                    return dto;
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

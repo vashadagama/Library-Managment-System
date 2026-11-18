@@ -10,6 +10,7 @@ import MagazineDetailScreen from './screens/MagazineDetailScreen';
 import AuthorsScreen from './screens/AuthorsScreen';
 import ReadersScreen from './screens/ReadersScreen';
 import LoansScreen from './screens/LoansScreen';
+import FinesScreen from './screens/FinesScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
 import IssuePage from './screens/IssuePage';
 import BookForm from './components/BookForm';
@@ -49,6 +50,10 @@ const App = () => {
             <Route
               path="/loans"
               element={<PrivateRoute roles={STAFF_ROLES}><LoansScreen /></PrivateRoute>}
+            />
+            <Route
+              path="/fines"
+              element={<PrivateRoute roles={STAFF_ROLES}><FinesScreen /></PrivateRoute>}
             />
             <Route
               path="/statistics"

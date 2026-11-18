@@ -11,9 +11,13 @@ import com.example.lims.repository.LoanRepository;
 import com.example.lims.repository.RoleRepository;
 import com.example.lims.repository.UserRepository;
 import com.example.lims.repository.UserStatusRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class UserService {
 
@@ -36,19 +41,22 @@ public class UserService {
     private final LoanRepository loanRepository;
     private final PasswordEncoder passwordEncoder;
     private final SystemParameterService systemParameterService;
+    private final AuditService auditService;
 
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        UserStatusRepository userStatusRepository,
                        LoanRepository loanRepository,
                        PasswordEncoder passwordEncoder,
-                       SystemParameterService systemParameterService) {
+                       SystemParameterService systemParameterService,
+                       AuditService auditService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userStatusRepository = userStatusRepository;
         this.loanRepository = loanRepository;
         this.passwordEncoder = passwordEncoder;
         this.systemParameterService = systemParameterService;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -85,6 +93,9 @@ public class UserService {
         if (!isReader && (dto.getPassword() == null || dto.getPassword().isBlank())) {
             throw new BusinessLogicException("Пароль обязателен для роли " + role.getName());
         }
+        if (!isReader && !currentUserIsAdmin()) {
+            throw new AccessDeniedException("Создание сотрудников доступно только администратору");
+        }
 
         User user = new User();
         user.setFirstName(dto.getFirstName());
@@ -97,7 +108,9 @@ public class UserService {
         user.setMaxActiveLoans(systemParameterService.getInt("max_active_loans_default", 5));
         user.setPasswordHash(isReader ? null : passwordEncoder.encode(dto.getPassword()));
 
-        return toDto(userRepository.save(user), 0);
+        User saved = userRepository.save(user);
+        auditService.log("CREATE", "USER", saved.getId());
+        return toDto(saved, 0);
     }
 
     @Transactional
@@ -106,7 +119,9 @@ public class UserService {
         UserStatus newStatus = userStatusRepository.findByNameIgnoreCase(statusName)
                 .orElseThrow(() -> new ResourceNotFoundException("Статус пользователя не найден: " + statusName));
         user.setStatus(newStatus);
-        return toDto(userRepository.save(user), activeLoansCount(userId));
+        User saved = userRepository.save(user);
+        auditService.log("UPDATE", "USER", userId);
+        return toDto(saved, activeLoansCount(userId));
     }
 
     @Transactional
@@ -116,7 +131,52 @@ public class UserService {
         }
         User user = getUser(userId);
         user.setMaxActiveLoans(newLimit);
-        return toDto(userRepository.save(user), activeLoansCount(userId));
+        User saved = userRepository.save(user);
+        auditService.log("UPDATE", "USER", userId);
+        return toDto(saved, activeLoansCount(userId));
+    }
+
+    /**
+     * Изменение роли пользователя (админ-функция ТЗ: управление сотрудниками).
+     * Собственную роль менять нельзя — защита от потери доступа.
+     */
+    @Transactional
+    public UserDto changeUserRole(UUID userId, String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            throw new BusinessLogicException("Укажите роль");
+        }
+        if (userId.equals(currentUserId())) {
+            throw new BusinessLogicException("Нельзя изменить собственную роль");
+        }
+
+        User user = getUser(userId);
+        Role role = roleRepository.findByNameIgnoreCase(roleName.toUpperCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Роль не найдена: " + roleName));
+
+        boolean becomesStaff = !"READER".equalsIgnoreCase(role.getName());
+        boolean wasStaff = user.getRole() != null && !"READER".equalsIgnoreCase(user.getRole().getName());
+        if (becomesStaff && !wasStaff && (user.getPasswordHash() == null || user.getPasswordHash().isBlank())) {
+            throw new BusinessLogicException("Сначала установите пароль: сотрудник должен уметь входить в систему");
+        }
+
+        user.setRole(role);
+        User saved = userRepository.save(user);
+        auditService.log("UPDATE", "USER", userId);
+        return toDto(saved, activeLoansCount(userId));
+    }
+
+    /**
+     * Установка/смена пароля пользователя (админ-функция для сотрудников).
+     */
+    @Transactional
+    public void changePassword(UUID userId, String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new BusinessLogicException("Пароль не может быть пустым");
+        }
+        User user = getUser(userId);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        auditService.log("UPDATE", "USER", userId);
     }
 
     /**
@@ -141,6 +201,7 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("Статус пользователя DELETED не найден"));
         user.setStatus(deletedStatus);
         userRepository.save(user);
+        auditService.log("DELETE", "USER", userId);
     }
 
     @Transactional(readOnly = true)
@@ -157,6 +218,20 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
     }
 
+    private boolean currentUserIsAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
+
+    private UUID currentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.example.lims.security.UserDetailsImpl details) {
+            return details.getUser().getId();
+        }
+        return null;
+    }
+
     private int activeLoansCount(UUID userId) {
         return (int) loanRepository.countByUserIdAndStatusNames(userId, ACTIVE_LOAN_STATUSES);
     }
@@ -170,7 +245,7 @@ public class UserService {
     }
 
     private UserDto toDto(User user, int activeLoansCount) {
-        return new UserDto(
+        UserDto dto = new UserDto(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -180,6 +255,8 @@ public class UserService {
                 user.getMaxActiveLoans(),
                 activeLoansCount
         );
+        dto.setHasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isBlank());
+        return dto;
     }
 
     private String generateLibraryCardNumber() {

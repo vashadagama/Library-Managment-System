@@ -12,3 +12,9 @@ export const updateMaxLoans = (id, maxActiveLoans) =>
   api.patch(`/users/${id}/max-loans`, { maxActiveLoans });
 
 export const searchReaders = (query) => api.get('/users/search', { params: { q: query } });
+
+export const changeUserRole = (id, role) =>
+  api.patch(`/users/${id}/role`, { role });
+
+export const changeUserPassword = (id, password) =>
+  api.patch(`/users/${id}/password`, { password });
