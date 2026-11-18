@@ -5,6 +5,7 @@ import com.example.lims.dto.UserDto;
 import com.example.lims.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -52,5 +53,11 @@ public class UserController {
     @GetMapping("/search")
     public List<UserDto> searchUsers(@RequestParam String q) {
         return userService.searchUsers(q);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }

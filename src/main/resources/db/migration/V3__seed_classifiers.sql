@@ -6,7 +6,9 @@ ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO user_statuses (name) VALUES
     ('ACTIVE'),
-    ('BLOCKED')
+    ('FROZEN'),
+    ('BLOCKED'),
+    ('DELETED')
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO item_statuses (name) VALUES

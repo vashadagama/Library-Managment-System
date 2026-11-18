@@ -55,7 +55,7 @@ public class UserService {
     public Page<UserDto> getAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
-        return userRepository.findAll(pageable)
+        return userRepository.findByStatusNameNot("DELETED", pageable)
                 .map(user -> toDto(user, activeLoansMap.getOrDefault(user.getId(), 0L).intValue()));
     }
 
@@ -119,10 +119,35 @@ public class UserService {
         return toDto(userRepository.save(user), activeLoansCount(userId));
     }
 
+    /**
+     * Мягкое удаление читателя: статус меняется на DELETED, история сохраняется.
+     */
+    @Transactional
+    public void deleteUser(UUID userId) {
+        User user = getUser(userId);
+
+        String roleName = user.getRole() != null ? user.getRole().getName() : null;
+        if (roleName != null && !ROLE_READER.equalsIgnoreCase(roleName)) {
+            throw new BusinessLogicException("Удаление сотрудников не поддерживается — используйте блокировку");
+        }
+        if (user.getStatus() != null && "DELETED".equals(user.getStatus().getName())) {
+            throw new BusinessLogicException("Пользователь уже удалён");
+        }
+        if (activeLoansCount(userId) > 0) {
+            throw new BusinessLogicException("Нельзя удалить пользователя с активными выдачами");
+        }
+
+        UserStatus deletedStatus = userStatusRepository.findByNameIgnoreCase("DELETED")
+                .orElseThrow(() -> new ResourceNotFoundException("Статус пользователя DELETED не найден"));
+        user.setStatus(deletedStatus);
+        userRepository.save(user);
+    }
+
     @Transactional(readOnly = true)
     public List<UserDto> searchUsers(String search) {
         Map<UUID, Long> activeLoansMap = getActiveLoansCountMap();
         return userRepository.searchUsers(search).stream()
+                .filter(user -> user.getStatus() == null || !"DELETED".equals(user.getStatus().getName()))
                 .map(user -> toDto(user, activeLoansMap.getOrDefault(user.getId(), 0L).intValue()))
                 .collect(Collectors.toList());
     }

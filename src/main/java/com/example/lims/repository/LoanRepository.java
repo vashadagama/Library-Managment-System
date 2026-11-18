@@ -45,16 +45,18 @@ public interface LoanRepository extends JpaRepository<Loan, UUID> {
                                      @Param("statuses") List<String> statuses);
 
     @Query(value = """
-            SELECT li.id, li.title,
-                   STRING_AGG(CONCAT(a.last_name, ' ', a.first_name), ', ') AS authors,
-                   COUNT(DISTINCT l.id) AS cnt
+            SELECT li.id, li.title, li_authors.authors AS authors,
+                   COUNT(l.id) AS cnt
             FROM loans l
             JOIN item_copies ic ON l.copy_id = ic.id
             JOIN library_items li ON ic.item_id = li.id
-            LEFT JOIN item_authors ia ON li.id = ia.item_id
-            LEFT JOIN authors a ON ia.author_id = a.id
+            LEFT JOIN (SELECT ia.item_id,
+                              STRING_AGG(CONCAT(a.last_name, ' ', a.first_name), ', ') AS authors
+                       FROM item_authors ia
+                       JOIN authors a ON ia.author_id = a.id
+                       GROUP BY ia.item_id) li_authors ON li_authors.item_id = li.id
             WHERE (:year IS NULL OR EXTRACT(YEAR FROM l.loan_date) = :year)
-            GROUP BY li.id, li.title
+            GROUP BY li.id, li.title, li_authors.authors
             ORDER BY cnt DESC
             """,
             nativeQuery = true)
