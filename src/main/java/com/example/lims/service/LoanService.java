@@ -151,7 +151,19 @@ public class LoanService {
 
     @Transactional(readOnly = true)
     public List<LoanDto> getAllActiveLoans() {
-        return loanRepository.findByStatusNames(ACTIVE_STATUSES).stream().map(this::toDto).toList();
+        LocalDate today = LocalDate.now();
+        BigDecimal rate = systemParameterService.getDecimal("fine_per_day", BigDecimal.TEN);
+
+        return loanRepository.findByStatusNames(ACTIVE_STATUSES).stream()
+                .map(loan -> {
+                    LoanDto dto = toDto(loan);
+                    if (loan.getDueDate() != null && loan.getDueDate().isBefore(today)) {
+                        long daysOverdue = Math.max(DAYS.between(loan.getDueDate(), today), 1);
+                        dto.setFineAmount(rate.multiply(BigDecimal.valueOf(daysOverdue)));
+                    }
+                    return dto;
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

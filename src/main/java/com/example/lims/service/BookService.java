@@ -31,38 +31,46 @@ public class BookService {
     private final PublisherRepository publisherRepository;
     private final LanguageRepository languageRepository;
     private final LocationRepository locationRepository;
+    private final AuditService auditService;
 
     public BookService(BookRepository bookRepository,
                        AuthorRepository authorRepository,
                        GenreRepository genreRepository,
                        PublisherRepository publisherRepository,
                        LanguageRepository languageRepository,
-                       LocationRepository locationRepository) {
+                       LocationRepository locationRepository,
+                       AuditService auditService) {
         this.bookRepository = bookRepository;
         this.authorRepository = authorRepository;
         this.genreRepository = genreRepository;
         this.publisherRepository = publisherRepository;
         this.languageRepository = languageRepository;
         this.locationRepository = locationRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
     public BookDto createBook(BookCreateDto dto) {
         Book book = new Book();
         applyDto(book, dto);
-        return toDto(bookRepository.save(book));
+        Book saved = bookRepository.save(book);
+        auditService.log("CREATE", "BOOK", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional
     public BookDto updateBook(UUID id, BookCreateDto dto) {
         Book existing = getEntity(id);
         applyDto(existing, dto);
-        return toDto(bookRepository.save(existing));
+        Book saved = bookRepository.save(existing);
+        auditService.log("UPDATE", "BOOK", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional
     public void deleteBook(UUID id) {
         Book book = getEntity(id);
+        auditService.log("DELETE", "BOOK", book.getId());
         bookRepository.delete(book);
     }
 

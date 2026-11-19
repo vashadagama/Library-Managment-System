@@ -12,6 +12,7 @@ const navItems = [
   { to: '/loans', label: 'Выдачи', icon: 'loans' },
   { to: '/fines', label: 'Штрафы', icon: 'warning' },
   { to: '/statistics', label: 'Статистика', icon: 'statistics' },
+  { to: '/admin', label: 'Администрирование', icon: 'settings', adminOnly: true },
 ];
 
 const Layout = () => {
@@ -84,7 +85,9 @@ const Layout = () => {
         </div>
 
         <nav className="app-menubar" aria-label="Основная навигация">
-          {navItems.map((item) => (
+          {navItems
+            .filter((item) => !item.adminOnly || user.role === 'ROLE_ADMIN')
+            .map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

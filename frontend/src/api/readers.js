@@ -18,3 +18,5 @@ export const changeUserRole = (id, role) =>
 
 export const changeUserPassword = (id, password) =>
   api.patch(`/users/${id}/password`, { password });
+
+export const deleteUser = (id) => api.delete(`/users/${id}`);

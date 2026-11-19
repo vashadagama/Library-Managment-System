@@ -17,10 +17,13 @@ public class AuthorService {
 
     private final AuthorRepository authorRepository;
     private final LibraryItemRepository libraryItemRepository;
+    private final AuditService auditService;
 
-    public AuthorService(AuthorRepository authorRepository, LibraryItemRepository libraryItemRepository) {
+    public AuthorService(AuthorRepository authorRepository, LibraryItemRepository libraryItemRepository,
+                         AuditService auditService) {
         this.authorRepository = authorRepository;
         this.libraryItemRepository = libraryItemRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -31,7 +34,9 @@ public class AuthorService {
     @Transactional
     public AuthorDto createAuthor(AuthorDto dto) {
         Author author = new Author(dto.getFirstName(), dto.getLastName(), dto.getMiddleName());
-        return toDto(authorRepository.save(author));
+        Author saved = authorRepository.save(author);
+        auditService.log("CREATE", "AUTHOR", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -45,7 +50,9 @@ public class AuthorService {
         existing.setFirstName(dto.getFirstName());
         existing.setLastName(dto.getLastName());
         existing.setMiddleName(dto.getMiddleName());
-        return toDto(authorRepository.save(existing));
+        Author saved = authorRepository.save(existing);
+        auditService.log("UPDATE", "AUTHOR", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional
@@ -54,6 +61,7 @@ public class AuthorService {
         if (libraryItemRepository.existsByAuthors_Id(id)) {
             throw new BusinessLogicException("Нельзя удалить автора, у которого есть произведения. Сначала удалите или отвяжите произведения.");
         }
+        auditService.log("DELETE", "AUTHOR", author.getId());
         authorRepository.delete(author);
     }
 

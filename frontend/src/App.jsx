@@ -12,6 +12,7 @@ import ReadersScreen from './screens/ReadersScreen';
 import LoansScreen from './screens/LoansScreen';
 import FinesScreen from './screens/FinesScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
+import AdminScreen from './screens/AdminScreen';
 import IssuePage from './screens/IssuePage';
 import BookForm from './components/BookForm';
 import MagazineForm from './components/MagazineForm';
@@ -58,6 +59,10 @@ const App = () => {
             <Route
               path="/statistics"
               element={<PrivateRoute roles={STAFF_ROLES}><StatisticsScreen /></PrivateRoute>}
+            />
+            <Route
+              path="/admin"
+              element={<PrivateRoute roles={['ROLE_ADMIN']}><AdminScreen /></PrivateRoute>}
             />
             <Route
               path="/issue/:itemId"

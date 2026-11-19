@@ -29,6 +29,7 @@ class ItemCopyServiceTest {
     @Mock private ItemCopyRepository itemCopyRepository;
     @Mock private LibraryItemRepository libraryItemRepository;
     @Mock private ItemStatusRepository itemStatusRepository;
+    @Mock private AuditService auditService;
 
     @InjectMocks private ItemCopyService itemCopyService;
 

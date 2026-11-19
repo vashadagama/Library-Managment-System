@@ -6,6 +6,7 @@ import {
   changeUserRole,
   changeUserStatus,
   createReader,
+  deleteUser,
   getReaders,
   searchReaders,
   updateMaxLoans,
@@ -14,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../utils/errors';
 import { userRoleLabel, userStatusLabel, statusTone } from '../utils/labels';
 import useDebouncedValue from '../hooks/useDebouncedValue';
+import ConfirmDialog from '../components/ConfirmDialog';
 import Dialog from '../components/Dialog';
 import Icon from '../components/Icon';
 import PageHeader from '../components/PageHeader';
@@ -33,6 +35,18 @@ const ROLE_OPTIONS = [
   { value: 'LIBRARIAN', label: 'Библиотекарь' },
   { value: 'ADMIN', label: 'Администратор' },
 ];
+
+const STATUS_OPTIONS = [
+  { value: 'ACTIVE', label: 'Активен' },
+  { value: 'FROZEN', label: 'Заморожен' },
+  { value: 'BLOCKED', label: 'Заблокирован' },
+];
+
+const STATUS_TOASTS = {
+  ACTIVE: 'Читатель активирован',
+  FROZEN: 'Читатель заморожен',
+  BLOCKED: 'Читатель заблокирован',
+};
 
 const ReadersScreen = () => {
   const [searchParams] = useSearchParams();
@@ -60,6 +74,8 @@ const ReadersScreen = () => {
   const [roleForm, setRoleForm] = useState({ role: 'LIBRARIAN', password: '' });
   const [roleError, setRoleError] = useState('');
   const [savingRole, setSavingRole] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 350);
 
   const loadReaders = useCallback(async () => {
@@ -95,18 +111,35 @@ const ReadersScreen = () => {
 
   const reload = () => setReloadKey((key) => key + 1);
 
-  const handleStatus = async (reader) => {
-    const nextStatus = reader.statusName === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+  const handleStatus = async (reader, nextStatus) => {
+    if (!nextStatus || nextStatus === reader.statusName) return;
     setBusyId(reader.id);
 
     try {
       await changeUserStatus(reader.id, nextStatus);
-      toast.success(nextStatus === 'BLOCKED' ? 'Читатель заблокирован' : 'Читатель активирован');
+      toast.success(STATUS_TOASTS[nextStatus] || 'Статус изменён');
       reload();
     } catch (statusError) {
       toast.error(getErrorMessage(statusError, 'Не удалось изменить статус'));
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+
+    try {
+      await deleteUser(deleteTarget.id);
+      toast.success('Пользователь удалён');
+      setDeleteTarget(null);
+      reload();
+    } catch (deleteError) {
+      toast.error(getErrorMessage(deleteError, 'Не удалось удалить пользователя'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -231,7 +264,7 @@ const ReadersScreen = () => {
     <div className="screen">
       <PageHeader
         title="Читатели и сотрудники"
-        subtitle={isAdmin ? 'Регистрация, блокировка, лимиты и роли' : 'Регистрация, блокировка и лимиты выдач'}
+        subtitle={isAdmin ? 'Регистрация, заморозка, блокировка, лимиты, роли и удаление' : 'Регистрация читателей, просмотр учётных записей'}
         icon="readers"
         actions={
           <>
@@ -329,14 +362,21 @@ const ReadersScreen = () => {
                         <div className="row-actions">
                           {isAdmin ? (
                             <>
-                              <button
-                                type="button"
-                                className={`retro-btn retro-btn--small ${reader.statusName === 'ACTIVE' ? 'danger' : 'success'}`}
-                                onClick={() => handleStatus(reader)}
+                              <select
+                                className="row-status-select"
+                                value={
+                                  STATUS_OPTIONS.some((option) => option.value === reader.statusName)
+                                    ? reader.statusName
+                                    : 'ACTIVE'
+                                }
+                                onChange={(event) => handleStatus(reader, event.target.value)}
                                 disabled={busy}
+                                title="Статус читателя"
                               >
-                                {reader.statusName === 'ACTIVE' ? 'Заблокировать' : 'Активировать'}
-                              </button>
+                                {STATUS_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                              </select>
                               <button
                                 type="button"
                                 className="retro-btn retro-btn--small"
@@ -352,6 +392,15 @@ const ReadersScreen = () => {
                                 disabled={busy || reader.email === user?.email}
                               >
                                 Роль
+                              </button>
+                              <button
+                                type="button"
+                                className="retro-btn retro-btn--small danger"
+                                onClick={() => setDeleteTarget(reader)}
+                                disabled={busy || reader.email === user?.email}
+                                title="Удалить пользователя"
+                              >
+                                Удалить
                               </button>
                             </>
                           ) : (
@@ -556,6 +605,18 @@ const ReadersScreen = () => {
             для входа в систему. Свою роль изменить нельзя.
           </p>
         </Dialog>
+      ) : null}
+
+      {deleteTarget ? (
+        <ConfirmDialog
+          title="Удаление пользователя"
+          danger
+          busy={deleting}
+          message={`Удалить учётную запись ${deleteTarget.fullName} (${deleteTarget.email})? Пользователь будет помечен как удалённый, история выдач сохранится.`}
+          confirmLabel="Удалить"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+        />
       ) : null}
     </div>
   );

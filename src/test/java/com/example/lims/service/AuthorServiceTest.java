@@ -25,6 +25,7 @@ class AuthorServiceTest {
 
     @Mock private AuthorRepository authorRepository;
     @Mock private LibraryItemRepository libraryItemRepository;
+    @Mock private AuditService auditService;
 
     @InjectMocks private AuthorService authorService;
 

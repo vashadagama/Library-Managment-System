@@ -26,17 +26,20 @@ public class MagazineService {
     private final PublisherRepository publisherRepository;
     private final LanguageRepository languageRepository;
     private final LocationRepository locationRepository;
+    private final AuditService auditService;
 
     public MagazineService(MagazineRepository magazineRepository,
                            GenreRepository genreRepository,
                            PublisherRepository publisherRepository,
                            LanguageRepository languageRepository,
-                           LocationRepository locationRepository) {
+                           LocationRepository locationRepository,
+                           AuditService auditService) {
         this.magazineRepository = magazineRepository;
         this.genreRepository = genreRepository;
         this.publisherRepository = publisherRepository;
         this.languageRepository = languageRepository;
         this.locationRepository = locationRepository;
+        this.auditService = auditService;
     }
 
     public MagazineDto getById(UUID id) {
@@ -56,19 +59,25 @@ public class MagazineService {
     public MagazineDto create(MagazineCreateDto dto) {
         Magazine magazine = new Magazine();
         applyDto(magazine, dto);
-        return toDto(magazineRepository.save(magazine));
+        Magazine saved = magazineRepository.save(magazine);
+        auditService.log("CREATE", "MAGAZINE", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional
     public MagazineDto update(UUID id, MagazineCreateDto dto) {
         Magazine existing = getEntity(id);
         applyDto(existing, dto);
-        return toDto(magazineRepository.save(existing));
+        Magazine saved = magazineRepository.save(existing);
+        auditService.log("UPDATE", "MAGAZINE", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
-        magazineRepository.delete(getEntity(id));
+        Magazine magazine = getEntity(id);
+        auditService.log("DELETE", "MAGAZINE", magazine.getId());
+        magazineRepository.delete(magazine);
     }
 
     private void applyDto(Magazine magazine, MagazineCreateDto dto) {

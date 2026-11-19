@@ -23,7 +23,9 @@ const LOAN_STATUS_LABELS = {
 
 const USER_STATUS_LABELS = {
   ACTIVE: 'Активен',
+  FROZEN: 'Заморожен',
   BLOCKED: 'Заблокирован',
+  DELETED: 'Удалён',
 };
 
 const USER_ROLE_LABELS = {
@@ -52,6 +54,7 @@ export const statusTone = (value) => {
       return 'danger';
     case 'RENEWED':
     case 'UNDER_REPAIR':
+    case 'FROZEN':
       return 'warning';
     case 'BORROWED':
     case 'WITHDRAWN':

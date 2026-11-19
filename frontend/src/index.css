@@ -757,6 +757,44 @@ input[type="number"] {
   flex-wrap: wrap;
 }
 
+.retro-table .row-actions select.row-status-select {
+  width: auto;
+  min-width: 104px;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.admin-tabs {
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-param-input {
+  max-width: 160px;
+  font-family: var(--font-mono, monospace);
+}
+
+.admin-dict-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px dashed var(--border-mid);
+  background: var(--surface-alt);
+}
+
+.admin-dict-form .form-group {
+  margin: 0;
+  min-width: 160px;
+  flex: 0 1 200px;
+}
+
+.admin-dict-form__submit {
+  margin-bottom: 1px;
+}
+
 .retro-table .num {
   text-align: right;
   font-family: var(--font-mono);

@@ -34,6 +34,7 @@ class MagazineServiceTest {
     @Mock private PublisherRepository publisherRepository;
     @Mock private LanguageRepository languageRepository;
     @Mock private LocationRepository locationRepository;
+    @Mock private AuditService auditService;
 
     @InjectMocks private MagazineService magazineService;
 

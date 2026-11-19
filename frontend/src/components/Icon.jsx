@@ -138,6 +138,12 @@ const paths = {
       <path d="M8 7v4M8 4.5v.5" />
     </>
   ),
+  settings: (
+    <>
+      <circle cx="8" cy="8" r="2.4" />
+      <path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3" />
+    </>
+  ),
 };
 
 const Icon = ({ name, size = 16, className = "", title }) => {

@@ -26,13 +26,16 @@ public class ItemCopyService {
     private final ItemCopyRepository itemCopyRepository;
     private final LibraryItemRepository libraryItemRepository;
     private final ItemStatusRepository itemStatusRepository;
+    private final AuditService auditService;
 
     public ItemCopyService(ItemCopyRepository itemCopyRepository,
                            LibraryItemRepository libraryItemRepository,
-                           ItemStatusRepository itemStatusRepository) {
+                           ItemStatusRepository itemStatusRepository,
+                           AuditService auditService) {
         this.itemCopyRepository = itemCopyRepository;
         this.libraryItemRepository = libraryItemRepository;
         this.itemStatusRepository = itemStatusRepository;
+        this.auditService = auditService;
     }
 
     public ItemCopyDto createCopy(ItemCopyCreateDto dto) {
@@ -49,7 +52,9 @@ public class ItemCopyService {
         copy.setAcquisitionDate(dto.getAcquisitionDate());
         copy.setPrice(dto.getPrice());
         copy.setStatus(resolveStatus(AVAILABLE));
-        return toDto(itemCopyRepository.save(copy));
+        ItemCopy saved = itemCopyRepository.save(copy);
+        auditService.log("CREATE", "ITEM_COPY", saved.getId());
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -90,7 +95,9 @@ public class ItemCopyService {
         }
 
         copy.setStatus(newStatus);
-        return toDto(itemCopyRepository.save(copy));
+        ItemCopy saved = itemCopyRepository.save(copy);
+        auditService.log("UPDATE", "ITEM_COPY", saved.getId());
+        return toDto(saved);
     }
 
     public void deleteCopy(UUID id) {
@@ -98,6 +105,7 @@ public class ItemCopyService {
         if (BORROWED.equalsIgnoreCase(copy.getStatus().getName())) {
             throw new BusinessLogicException("Нельзя удалить выданный экземпляр");
         }
+        auditService.log("DELETE", "ITEM_COPY", copy.getId());
         itemCopyRepository.delete(copy);
     }
 
